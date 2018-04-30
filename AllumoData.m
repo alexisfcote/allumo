@@ -4,7 +4,17 @@ classdef AllumoData < handle
     properties (SetObservable)
         pelvis_path;
         cuisse_path;
-        humanmodel;
+        humanModel;
+    end
+    
+    properties
+        p = {}% plot points objects
+        l = {}% plot link objects
+        a = {} % plot axes objects
+        tete % plot object
+        
+        pelvisplot = {}
+        cuisseplot = {}
     end
     
     methods

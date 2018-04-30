@@ -3,6 +3,7 @@ function allumo
 % click one of the plot-type push buttons. Clicking the button
 % plots the selected data in the axes.
 addpath('layout')
+addpath('ploting')
 %  Create and then hide the GUI as it is being constructed.
 f = figure('Visible','off','Position',[360,500,1200,800]);
 
@@ -19,15 +20,13 @@ p.TabTitles = {'Control', 'Settings', 'Other'};
 p.Selection = 2;
 
 % ------ Control panel Begin -------
-controlegrid = uix.Grid( 'Parent', panecontrol, 'Spacing', 5 );
+controlegrid = uix.VBoxFlex( 'Parent', panecontrol, 'Spacing', 5 );
 slidercontrol = uicontrol('Parent', controlegrid, ...
     'Style','slider', 'min',0, 'max',100, 'Value', 50, 'Sliderstep', [1, 1] / 100, ...
     'Callback',@slidercontrol_Callback);
-hatrajectory = axes('Parent', controlegrid,'Units','Pixels');
-uix.Empty( 'Parent', controlegrid );
-uix.Empty( 'Parent', controlegrid );
+hatrajectory = axes('Parent', controlegrid, 'Units','Pixels');
 
-set(controlegrid, 'Height', [30 -1], 'Width', [-3 -1])
+
 
 % ------ Control panel End -------
 
@@ -43,7 +42,6 @@ editcuisse = uicontrol('Parent', hboxcuisse, ...
 btnopencuisse = uicontrol('Parent', hboxcuisse, ...
     'Style','pushbutton','String','Open Cuisse',...
     'Callback',@btnopencuisse_Callback);
-set( hboxcuisse, 'Widths', [-4 -1] );
 
 panepelvis = uix.Panel('Parent', buttonvbox);
 hboxpelvis = uix.HBox('Parent', panepelvis, 'Spacing', 3);
@@ -53,7 +51,6 @@ editpelvis = uicontrol('Parent', hboxpelvis, ...
 btnopenpelvis = uicontrol('Parent', hboxpelvis, ...
     'Style','pushbutton','String','Open Pelvis',...
     'Callback',@btnopenpelvis_Callback);
-set( hboxpelvis, 'Widths', [-4 -1] );
 
 
 btnclear = uicontrol('Parent', buttonvbox, ...
@@ -64,8 +61,6 @@ btnload = uicontrol('Parent', hbox, ...
     'Style','pushbutton','String','Load',...
     'Callback',@btnload_Callback);
 
-set( hbox, 'Widths', [-3 -1] );
-set( buttonvbox, 'Height', [30, 30, 30]);
 % ------ Setting panel End -------
 
 % ------ Other panel Start -------
@@ -92,9 +87,8 @@ sinc_data = sin(r)./r;
 current_data = peaks_data;
 surf(current_data);
 
-set( vboxmain, 'Height', [-1 -5] );
-
 % -- Main Layout End -------
+set_layout()
 
 % Assign the GUI a name to appear in the window title.
 f.Name = 'Allumo';
@@ -118,6 +112,15 @@ try_get_files();
 %  Callbacks for simple_gui. These callbacks automatically
 %  have access to component handles and initialized data
 %  because they are nested at a lower level.
+
+    function set_layout()
+        set(controlegrid, 'Height', [30 -1])
+        set( hboxcuisse, 'Widths', [-4 -1] );
+        set( hboxpelvis, 'Widths', [-4 -1] );
+        set( hbox, 'Widths', [-3 -1] );
+        set( buttonvbox, 'Height', [30, 30, 30]);
+        set( vboxmain, 'Height', [-1 -3] );
+    end
 
     function update_ui_Callback(source, eventdata)
         set(editpelvis, 'String', data.pelvis_path)
@@ -152,14 +155,18 @@ try_get_files();
     end
 
     function btnload_Callback(source,eventdata)
-        %axes(ha)
         if ~isempty(data.pelvis_path) && ~isempty(data.cuisse_path)
-            data.humanmodel = HumanModel(data.pelvis_path, data.cuisse_path);
-            data.humanmodel.init_plot()
+            axes(ha)
+            data.humanModel = HumanModel(data.pelvis_path, data.cuisse_path);
+            init_plot(data)
             set(slidercontrol, 'Value', 0,...
-                'min', 0, 'max', length(data.humanmodel.timestamp), ...
-                'SliderStep', [1, 1] / length(data.humanmodel.timestamp))
+                'min', 0, 'max', length(data.humanModel.timestamp), ...
+                'SliderStep', [1, 1] / length(data.humanModel.timestamp))
             
+            axes(hatrajectory)
+            init_graph_plot(data)
+            
+            set_layout()
         end
     end
 
@@ -167,7 +174,7 @@ try_get_files();
         %axes(ha)
         value = round(source.Value);
         set(source, 'Value', value);
-        data.humanmodel.update_plot(value)
+        update_plot(data, value)
     end
     
     function btndebug_Callback(source, event)
@@ -187,5 +194,7 @@ try_get_files();
             pelvis_path = strcat(pwd, '\', pelvis_path.name);
             data.pelvis_path = pelvis_path;
         end
+        
+        btnload_Callback(0, 0)
     end
 end
