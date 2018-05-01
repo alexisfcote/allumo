@@ -17,12 +17,12 @@ panecontrol = uix.Panel( 'Parent', p );
 panesetting = uix.Panel( 'Parent', p );
 paneother   = uix.Panel( 'Parent', p );
 p.TabTitles = {'Control', 'Settings', 'Other'};
-p.Selection = 2;
+p.Selection = 1;
 
 % ------ Control panel Begin -------
 controlegrid = uix.VBoxFlex( 'Parent', panecontrol, 'Spacing', 5 );
 slidercontrol = uicontrol('Parent', controlegrid, ...
-    'Style','slider', 'min',0, 'max',100, 'Value', 50, 'Sliderstep', [1, 1] / 100, ...
+    'Style','slider', 'min',0, 'max',100, 'Value', 1, 'Sliderstep', [1, 1] / 100, ...
     'Callback',@slidercontrol_Callback);
 hatrajectory = axes('Parent', controlegrid, 'Units','Pixels');
 
@@ -76,6 +76,7 @@ uix.Empty( 'Parent', othergrid );
 % ------ Other panel End -------
 
 ha = axes('Parent', vboxmain,'Units','Pixels','Position',[50,60,200,185]);
+
 % Create the data to plot.
 peaks_data = peaks(35);
 membrane_data = membrane;
@@ -120,11 +121,15 @@ try_get_files();
         set( hbox, 'Widths', [-3 -1] );
         set( buttonvbox, 'Height', [30, 30, 30]);
         set( vboxmain, 'Height', [-1 -3] );
+        
+        set(hatrajectory, 'ButtonDownFcn', @hatrajectory_Callback)
     end
 
     function update_ui_Callback(source, eventdata)
         set(editpelvis, 'String', data.pelvis_path)
         set(editcuisse, 'String', data.cuisse_path)
+        
+        set_layout()
     end
 
     function editpelvis_Callback(source, eventdata)
@@ -136,14 +141,14 @@ try_get_files();
     end
 
     function btnopenpelvis_Callback(source,eventdata)
-        [FileName,PathName,FilterIndex] = uigetfile('*.xlsx');
+        [FileName,PathName,FilterIndex] = uigetfile({'*'; '*.xlsx'; '*.csv'});
         if FilterIndex
             data.pelvis_path = strcat(PathName, FileName);
         end
     end
 
     function btnopencuisse_Callback(source,eventdata)
-        [FileName,PathName,FilterIndex] = uigetfile('*.xlsx');
+        [FileName,PathName,FilterIndex] = uigetfile({'*'; '*.xlsx'; '*.csv'});
         if FilterIndex
             data.cuisse_path = strcat(PathName, FileName);
         end
@@ -159,8 +164,8 @@ try_get_files();
             axes(ha)
             data.humanModel = HumanModel(data.pelvis_path, data.cuisse_path);
             init_plot(data)
-            set(slidercontrol, 'Value', 0,...
-                'min', 0, 'max', length(data.humanModel.timestamp), ...
+            set(slidercontrol, 'Value', 1,...
+                'min', 1, 'max', length(data.humanModel.timestamp) , ...
                 'SliderStep', [1, 1] / length(data.humanModel.timestamp))
             
             axes(hatrajectory)
@@ -171,25 +176,33 @@ try_get_files();
     end
 
     function slidercontrol_Callback(source, eventdata)
-        %axes(ha)
         value = round(source.Value);
         set(source, 'Value', value);
         update_plot(data, value)
+        update_graph_plot(data, value);
     end
     
     function btndebug_Callback(source, event)
         keyboard
     end
+
+    function hatrajectory_Callback(source, event)
+        index = round(event.IntersectionPoint(1));
+        slidercontrol.Value = index;
+        slidercontrol_Callback(slidercontrol, 0)
+    end
     
     %% Misc function 
     function try_get_files()
         cuisse_path = dir('*Cuisse*');
+        cuisse_path = cuisse_path(2);
         if ~isempty(cuisse_path)
             cuisse_path = strcat(pwd, '\', cuisse_path.name);
             data.cuisse_path = cuisse_path;
         end
         
         pelvis_path = dir('*Pelvis*');
+        pelvis_path = pelvis_path(2);
         if ~isempty(pelvis_path)
             pelvis_path = strcat(pwd, '\', pelvis_path.name);
             data.pelvis_path = pelvis_path;

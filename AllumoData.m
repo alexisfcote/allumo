@@ -15,6 +15,7 @@ classdef AllumoData < handle
         
         pelvisplot = {}
         cuisseplot = {}
+        lineplot
     end
     
     methods

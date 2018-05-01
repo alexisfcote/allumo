@@ -33,9 +33,19 @@ classdef HumanModel < handle
     
     methods
         function obj = HumanModel(pelvisfilename, cuissefilename)
-            beginat=1;
-            obj.pelvisAcc = xlsread(pelvisfilename);obj.pelvisAcc(1:beginat,:)=[];
-            obj.cuissegaucheAcc = xlsread(cuissefilename);obj.cuissegaucheAcc(1:beginat,:)=[];
+            
+            [pathstr,name,ext] = fileparts(pelvisfilename);
+            if strcmp(ext, '.xlsx')
+                beginat=1;
+                obj.pelvisAcc = xlsread(pelvisfilename);obj.pelvisAcc(1:beginat,:)=[];
+                obj.cuissegaucheAcc = xlsread(cuissefilename);obj.cuissegaucheAcc(1:beginat,:)=[];
+            elseif strcmp(ext, '.csv')
+                obj.pelvisAcc = csvread(pelvisfilename,11,0, [11 0 3000 2]);
+                obj.cuissegaucheAcc = csvread(cuissefilename,11,0, [11 0 3000 2]);
+                
+                obj.pelvisAcc = [(1:length(obj.pelvisAcc))' obj.pelvisAcc];
+                obj.cuissegaucheAcc = [(1:length(obj.cuissegaucheAcc))' obj.cuissegaucheAcc];
+            end
             
             cuissegaucheAcctemp=obj.cuissegaucheAcc;obj.cuissegaucheAcc=[];
             pelvisAcctemp=obj.pelvisAcc;obj.pelvisAcc=[];
