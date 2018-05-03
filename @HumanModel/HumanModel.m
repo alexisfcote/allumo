@@ -32,7 +32,15 @@ classdef HumanModel < handle
     end
     
     methods
-        function obj = HumanModel(pelvisfilename, cuissefilename)
+        function obj = HumanModel(pelvisfilename, cuissefilename, varargin)
+            day = 1;
+            
+            for i=1:length(varargin)
+                if varargin{i} == 'day'
+                    day = varargin{i+1};
+                end
+            end
+            
             
             [pathstr,name,ext] = fileparts(pelvisfilename);
             if strcmp(ext, '.xlsx')
@@ -40,8 +48,8 @@ classdef HumanModel < handle
                 obj.pelvisAcc = xlsread(pelvisfilename);obj.pelvisAcc(1:beginat,:)=[];
                 obj.cuissegaucheAcc = xlsread(cuissefilename);obj.cuissegaucheAcc(1:beginat,:)=[];
             elseif strcmp(ext, '.csv')
-                obj.pelvisAcc = csvread(pelvisfilename,11,0, [11 0 3000 2]);
-                obj.cuissegaucheAcc = csvread(cuissefilename,11,0, [11 0 3000 2]);
+                obj.pelvisAcc = csvread(pelvisfilename,11,0, [11+30*3600*(day-1) 0 11+30*3600*day 2]);
+                obj.cuissegaucheAcc = csvread(cuissefilename,11,0, [11+30*3600*(day-1) 0 11+30*3600*day 2]);
                 
                 obj.pelvisAcc = [(1:length(obj.pelvisAcc))' obj.pelvisAcc];
                 obj.cuissegaucheAcc = [(1:length(obj.cuissegaucheAcc))' obj.cuissegaucheAcc];

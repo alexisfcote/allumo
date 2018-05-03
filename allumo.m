@@ -20,11 +20,18 @@ p.TabTitles = {'Control', 'Settings', 'Other'};
 p.Selection = 1;
 
 % ------ Control panel Begin -------
-controlegrid = uix.VBoxFlex( 'Parent', panecontrol, 'Spacing', 5 );
-slidercontrol = uicontrol('Parent', controlegrid, ...
+vboxpanesetting = uix.VBox( 'Parent', panecontrol, 'Spacing', 5 );
+slidercontrol = uicontrol('Parent', vboxpanesetting, ...
     'Style','slider', 'min',0, 'max',100, 'Value', 1, 'Sliderstep', [1, 1] / 100, ...
     'Callback',@slidercontrol_Callback);
-hatrajectory = axes('Parent', controlegrid, 'Units','Pixels');
+hatrajectory = axes('Parent', vboxpanesetting, 'Units','Pixels');
+hboxdaybutton = uix.HBox( 'Parent', vboxpanesetting, 'Spacing', 5 );
+btnprevday = uicontrol('Parent', hboxdaybutton, ...
+    'Style','pushbutton','String','Previous day',...
+    'Callback',@btnprevday_Callback);
+btnnextday = uicontrol('Parent', hboxdaybutton, ...
+    'Style','pushbutton','String','Next day',...
+    'Callback',@btnnextday_Callback);
 
 
 
@@ -115,7 +122,8 @@ try_get_files();
 %  because they are nested at a lower level.
 
     function set_layout()
-        set(controlegrid, 'Height', [30 -1])
+        set(vboxpanesetting, 'Height', [30 30 -1])
+        set(hboxdaybutton, 'Widths', [100 100])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1] );
