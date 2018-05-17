@@ -5,6 +5,7 @@ classdef AllumoData < handle
         pelvis_path;
         cuisse_path;
         humanModel;
+        hour=0;
     end
     
     properties

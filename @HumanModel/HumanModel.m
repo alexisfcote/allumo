@@ -8,7 +8,11 @@ classdef HumanModel < handle
         
         pelvis_mat
         cuissegauche_mat
+        
+        pelvisfilename,
+        cuissefilename
 
+        sampling_rate
         timestamp
         
         BodyCenter_POS = [0;0;0];
@@ -32,48 +36,43 @@ classdef HumanModel < handle
     end
     
     methods
-        function obj = HumanModel(pelvisfilename, cuissefilename, varargin)
-            day = 1;
+        function obj = HumanModel(pelvisfilename, cuissefilename, sampling_rate)
+            obj.pelvisfilename = pelvisfilename;
+            obj.cuissefilename = cuissefilename;
+            obj.sampling_rate = sampling_rate;
             
+            obj.load_data()
+            
+        end
+        
+        function load_data(obj, varargin)
+            pelvisfilename = obj.pelvisfilename;
+            cuissefilename = obj.cuissefilename;
+            
+            hour = 0;
             for i=1:length(varargin)
-                if varargin{i} == 'day'
-                    day = varargin{i+1};
+                if varargin{i} == 'hour'
+                    hour = varargin{i+1};
                 end
             end
-            
+   
             
             [pathstr,name,ext] = fileparts(pelvisfilename);
             if strcmp(ext, '.xlsx')
-                beginat=1;
-                obj.pelvisAcc = xlsread(pelvisfilename);obj.pelvisAcc(1:beginat,:)=[];
-                obj.cuissegaucheAcc = xlsread(cuissefilename);obj.cuissegaucheAcc(1:beginat,:)=[];
+                start_at=1;
+                obj.pelvisAcc = xlsread(pelvisfilename);
+                obj.pelvisAcc(1:start_at,:)=[];
+                obj.cuissegaucheAcc = xlsread(cuissefilename);
+                obj.cuissegaucheAcc(1:start_at,:)=[];
             elseif strcmp(ext, '.csv')
-                obj.pelvisAcc = csvread(pelvisfilename,11,0, [11+30*3600*(day-1) 0 11+30*3600*day 2]);
-                obj.cuissegaucheAcc = csvread(cuissefilename,11,0, [11+30*3600*(day-1) 0 11+30*3600*day 2]);
+                start_at = 11+obj.sampling_rate*3600*hour+1;
+                end_at   = 11+obj.sampling_rate*3600*(hour+1);
                 
-                obj.pelvisAcc = [(1:length(obj.pelvisAcc))' obj.pelvisAcc];
-                obj.cuissegaucheAcc = [(1:length(obj.cuissegaucheAcc))' obj.cuissegaucheAcc];
+                obj.pelvisAcc       = dlmread(pelvisfilename, ',',[start_at 0 end_at 2]);
+                obj.cuissegaucheAcc = dlmread(cuissefilename, ',',[start_at 0 end_at 2]);
             end
             
-            cuissegaucheAcctemp=obj.cuissegaucheAcc;obj.cuissegaucheAcc=[];
-            pelvisAcctemp=obj.pelvisAcc;obj.pelvisAcc=[];
-            
-            index=1;
-            for i=1:1:size(cuissegaucheAcctemp,1)
-                cuissegaucheAcctemp2(index,:)=cuissegaucheAcctemp(i,:);
-                pelvisAcctemp2(index,:)=pelvisAcctemp(i,:);
-                
-                index=index+1;
-            end
-            
-            obj.pelvisAcc = pelvisAcctemp2(:,2:4);
-            obj.cuissegaucheAcc = cuissegaucheAcctemp2(:,2:4);
-            
-            if ~all(pelvisAcctemp2(:,1) == cuissegaucheAcctemp2(:,1))
-                error('Les timestamps des deux accéléromètres ne correspondent pas')
-            end
-            
-            obj.timestamp = cuissegaucheAcctemp2(:,1);
+            obj.timestamp = (start_at + [1:length(obj.cuissegaucheAcc)]) / obj.sampling_rate;
             
             methodeAccelAngle = 1;
             if (methodeAccelAngle==1)
@@ -109,8 +108,6 @@ classdef HumanModel < handle
                 obj.cuissegauche_mat(:,:,i)=obj.cuissegauche_mat(:,:,i)*cuissegauche_offset;
             end
         end
-        
-        
     end
     
 end

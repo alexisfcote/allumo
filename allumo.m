@@ -25,13 +25,15 @@ slidercontrol = uicontrol('Parent', vboxpanesetting, ...
     'Style','slider', 'min',0, 'max',100, 'Value', 1, 'Sliderstep', [1, 1] / 100, ...
     'Callback',@slidercontrol_Callback);
 hatrajectory = axes('Parent', vboxpanesetting, 'Units','Pixels');
-hboxdaybutton = uix.HBox( 'Parent', vboxpanesetting, 'Spacing', 5 );
-btnprevday = uicontrol('Parent', hboxdaybutton, ...
-    'Style','pushbutton','String','Previous day',...
-    'Callback',@btnprevday_Callback);
-btnnextday = uicontrol('Parent', hboxdaybutton, ...
-    'Style','pushbutton','String','Next day',...
-    'Callback',@btnnextday_Callback);
+hboxhourbutton = uix.HBox( 'Parent', vboxpanesetting, 'Spacing', 5 );
+labelhour = uicontrol('Parent', hboxhourbutton, ...
+    'Style','text','String','', 'Fontsize', 16);
+btnprevhour = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Previous hour',...
+    'Callback',@btnprevhour_Callback);
+btnnexthour = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Next hour',...
+    'Callback',@btnnexthour_Callback);
 
 
 
@@ -113,6 +115,7 @@ data = AllumoData();
 % Create the listeners
 addlistener(data,'pelvis_path','PostSet', @update_ui_Callback);
 addlistener(data,'cuisse_path','PostSet', @update_ui_Callback);
+addlistener(data,'hour','PostSet', @update_ui_Callback);
 
 try_get_files();
 
@@ -123,19 +126,30 @@ try_get_files();
 
     function set_layout()
         set(vboxpanesetting, 'Height', [30 30 -1])
-        set(hboxdaybutton, 'Widths', [100 100])
+        set(hboxhourbutton, 'Widths', [100 100 100])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1] );
         set( buttonvbox, 'Height', [30, 30, 30]);
         set( vboxmain, 'Height', [-1 -3] );
         
-        set(hatrajectory, 'ButtonDownFcn', @hatrajectory_Callback)
+        
     end
 
-    function update_ui_Callback(source, eventdata)
+    function update_ui_Callback(~, ~)
         set(editpelvis, 'String', data.pelvis_path)
         set(editcuisse, 'String', data.cuisse_path)
+        
+        set(hatrajectory, 'ButtonDownFcn', @hatrajectory_Callback)
+        if exist('data', 'var') && length(data.pelvisplot)>1
+            for i=1:3
+                set(data.pelvisplot{i}, 'ButtonDownFcn', @hatrajectory_Callback)
+                set(data.cuisseplot{i}, 'ButtonDownFcn', @hatrajectory_Callback)
+            end
+            set(labelhour, 'String', datestr(seconds(data.hour*3600),'HH:MM:SS PM'))
+        end
+        
+        
         
         set_layout()
     end
@@ -170,7 +184,7 @@ try_get_files();
     function btnload_Callback(source,eventdata)
         if ~isempty(data.pelvis_path) && ~isempty(data.cuisse_path)
             axes(ha)
-            data.humanModel = HumanModel(data.pelvis_path, data.cuisse_path);
+            data.humanModel = HumanModel(data.pelvis_path, data.cuisse_path, 30);
             init_plot(data)
             set(slidercontrol, 'Value', 1,...
                 'min', 1, 'max', length(data.humanModel.timestamp) , ...
@@ -179,8 +193,22 @@ try_get_files();
             axes(hatrajectory)
             init_graph_plot(data)
             
-            set_layout()
+            update_ui_Callback(0,0)
         end
+    end
+
+    function btnprevhour_Callback(source, eventdata)
+        data.hour = min(data.hour-1, 1);
+        data.humanModel.load_data('hour', data.hour)
+        update_plot(data, 1)
+        update_graph_plot(data, 1);
+    end
+        
+    function btnnexthour_Callback(source, eventdata)
+        data.hour = data.hour+1;
+        data.humanModel.load_data('hour', data.hour)
+        update_plot(data, 1)
+        update_graph_plot(data, 1);
     end
 
     function slidercontrol_Callback(source, eventdata)
@@ -195,24 +223,24 @@ try_get_files();
     end
 
     function hatrajectory_Callback(source, event)
-        index = round(event.IntersectionPoint(1));
+        index = find(data.humanModel.timestamp() > event.IntersectionPoint(1), 1, 'first');
         slidercontrol.Value = index;
         slidercontrol_Callback(slidercontrol, 0)
     end
     
     %% Misc function 
     function try_get_files()
-        cuisse_path = dir('*Cuisse*');
+        cuisse_path = dir('data\*Jambe*');
         cuisse_path = cuisse_path(2);
         if ~isempty(cuisse_path)
-            cuisse_path = strcat(pwd, '\', cuisse_path.name);
+            cuisse_path = strcat(pwd, '\data\', cuisse_path.name);
             data.cuisse_path = cuisse_path;
         end
         
-        pelvis_path = dir('*Pelvis*');
+        pelvis_path = dir('data\*Tronc*');
         pelvis_path = pelvis_path(2);
         if ~isempty(pelvis_path)
-            pelvis_path = strcat(pwd, '\', pelvis_path.name);
+            pelvis_path = strcat(pwd, '\data\', pelvis_path.name);
             data.pelvis_path = pelvis_path;
         end
         
