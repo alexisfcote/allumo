@@ -34,7 +34,9 @@ btnprevhour = uicontrol('Parent', hboxhourbutton, ...
 btnnexthour = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Next hour',...
     'Callback',@btnnexthour_Callback);
-
+btnrectify = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Rectify',...
+    'Callback',@btnrectify_Callback);
 
 
 % ------ Control panel End -------
@@ -84,7 +86,8 @@ uix.Empty( 'Parent', othergrid );
 
 % ------ Other panel End -------
 
-ha = axes('Parent', vboxmain,'Units','Pixels','Position',[50,60,200,185]);
+ha = axes('Parent', vboxmain);
+set(ha, 'DataAspectRatioMode', 'manual')
 
 % Create the data to plot.
 peaks_data = peaks(35);
@@ -126,12 +129,12 @@ try_get_files();
 
     function set_layout()
         set(vboxpanesetting, 'Height', [30 30 -1])
-        set(hboxhourbutton, 'Widths', [100 100 100])
+        set(hboxhourbutton, 'Widths', [100 100 100 100])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1] );
         set( buttonvbox, 'Height', [30, 30, 30]);
-        set( vboxmain, 'Height', [-1 -3] );
+        set( vboxmain, 'Height', [200 600] );
         
         
     end
@@ -147,11 +150,10 @@ try_get_files();
                 set(data.cuisseplot{i}, 'ButtonDownFcn', @hatrajectory_Callback)
             end
             set(labelhour, 'String', datestr(seconds(data.hour*3600),'HH:MM:SS PM'))
-        end
-        
-        
-        
+        end        
         set_layout()
+        set(ha, 'DataAspectRatioMode', 'manual')
+
     end
 
     function editpelvis_Callback(source, eventdata)
@@ -211,6 +213,14 @@ try_get_files();
         update_graph_plot(data, 1);
     end
 
+    function btnrectify_Callback(source, eventdata)
+        data.humanModel.pelvisAcc = rectify_acc(data.humanModel.raw_pelvisAcc, data.humanModel.sampling_rate, 20, 100 );
+        data.humanModel.cuissegaucheAcc = rectify_acc(data.humanModel.raw_cuissegaucheAcc, data.humanModel.sampling_rate, 20, 100 );
+        data.humanModel.calculate_rotation_matrix()
+        update_plot(data, 1)
+        update_graph_plot(data, 1);
+    end
+
     function slidercontrol_Callback(source, eventdata)
         value = round(source.Value);
         set(source, 'Value', value);
@@ -230,6 +240,8 @@ try_get_files();
     
     %% Misc function 
     function try_get_files()
+        
+        % load sentinelle
         cuisse_path = dir('data\*Jambe*');
         cuisse_path = cuisse_path(2);
         if ~isempty(cuisse_path)
@@ -244,6 +256,9 @@ try_get_files();
             data.pelvis_path = pelvis_path;
         end
         
+        % load test
+        data.cuisse_path = strcat(pwd, '\jambe-test.csv');
+        data.pelvis_path = strcat(pwd, '\pelvis-test.csv');
         btnload_Callback(0, 0)
     end
 end

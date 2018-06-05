@@ -3,18 +3,25 @@ classdef HumanModel < handle
     % l'application Allumo
     
     properties
+        raw_pelvisAcc
+        raw_cuissegaucheAcc
+        
         pelvisAcc
         cuissegaucheAcc
         
         pelvis_mat
         cuissegauche_mat
         
-        pelvisfilename,
+        pelvisfilename
         cuissefilename
 
         sampling_rate
         timestamp
         
+        zeroed_time = {};
+    end
+    
+    properties
         BodyCenter_POS = [0;0;0];
         BodyCenter_Trans = [0;0;0];
         Bassin_Trans = [0;0;0];
@@ -34,7 +41,6 @@ classdef HumanModel < handle
         PiedDroite_Trans = [0;0;-0.4];
         PiedGauche_Trans = [0;0;-0.4];
     end
-    
     methods
         function obj = HumanModel(pelvisfilename, cuissefilename, sampling_rate)
             obj.pelvisfilename = pelvisfilename;
@@ -64,28 +70,40 @@ classdef HumanModel < handle
                 obj.pelvisAcc(1:start_at,:)=[];
                 obj.cuissegaucheAcc = xlsread(cuissefilename);
                 obj.cuissegaucheAcc(1:start_at,:)=[];
-            elseif strcmp(ext, '.csv')
+            elseif strcmp(name(1:2), 'SN')
                 start_at = 11+obj.sampling_rate*3600*hour+1;
                 end_at   = 11+obj.sampling_rate*3600*(hour+1);
                 
                 obj.pelvisAcc       = dlmread(pelvisfilename, ',',[start_at 0 end_at 2]);
                 obj.cuissegaucheAcc = dlmread(cuissefilename, ',',[start_at 0 end_at 2]);
+            elseif strcmp(ext, '.csv')
+                start_at = obj.sampling_rate*3600*hour+1;
+                end_at   = obj.sampling_rate*3600*(hour+1);
+                
+                obj.pelvisAcc       = dlmread(pelvisfilename, ',');
+                obj.cuissegaucheAcc = dlmread(cuissefilename, ',');
             end
             
+            obj.raw_pelvisAcc = obj.pelvisAcc(:, :);
+            obj.raw_cuissegaucheAcc = obj.cuissegaucheAcc(:, :);
             obj.timestamp = (start_at + [1:length(obj.cuissegaucheAcc)]) / obj.sampling_rate;
             
+            obj.calculate_rotation_matrix();
+        end
+        
+        function calculate_rotation_matrix(obj)
             methodeAccelAngle = 1;
             if (methodeAccelAngle==1)
                 for i=1:1:size(obj.cuissegaucheAcc,1)
                     
-                    thetaX_pelvis = atan2(obj.pelvisAcc(i,2),obj.pelvisAcc(i,3));
-                    thetaY_pelvis = atan2(obj.pelvisAcc(i,1),obj.pelvisAcc(i,3));
+                    thetaX_pelvis = atan2(obj.pelvisAcc(i,1),obj.pelvisAcc(i,3));
+                    thetaY_pelvis = atan2(obj.pelvisAcc(i,2),obj.pelvisAcc(i,3));
                     Rx_pelvis=[1 0 0;0 cos(thetaX_pelvis) -sin(thetaX_pelvis);0 sin(thetaX_pelvis) cos(thetaX_pelvis)];
                     Ry_pelvis=[cos(thetaY_pelvis) 0 sin(thetaY_pelvis);0 1 0;-sin(thetaY_pelvis) 0 cos(thetaY_pelvis)];
                     pelvis(:,:,i) = Ry_pelvis*Rx_pelvis*eye(3,3);
                     
-                    thetaX_cuisse = atan2(obj.cuissegaucheAcc(i,2),obj.cuissegaucheAcc(i,3));
-                    thetaY_cuisse = atan2(obj.cuissegaucheAcc(i,1),obj.cuissegaucheAcc(i,3));
+                    thetaX_cuisse = atan2(obj.cuissegaucheAcc(i,1),obj.cuissegaucheAcc(i,3));
+                    thetaY_cuisse = atan2(obj.cuissegaucheAcc(i,2),obj.cuissegaucheAcc(i,3));
                     Rx_cuisse=[1 0 0;0 cos(thetaX_cuisse) -sin(thetaX_cuisse);0 sin(thetaX_cuisse) cos(thetaX_cuisse)];
                     Ry_cuisse=[cos(thetaY_cuisse) 0 sin(thetaY_cuisse);0 1 0;-sin(thetaY_cuisse) 0 cos(thetaY_cuisse)];
                     cuissegauche(:,:,i) = Ry_cuisse*Rx_cuisse*eye(3,3);
@@ -93,7 +111,6 @@ classdef HumanModel < handle
             end
             
             cuissegauche_mat_temp=cuissegauche;
-            pelvis_mat_temp=pelvis;
             
             pelvis_mat_zero(:,:,:) = pelvis(:,:,:);
             cuissegauche_mat_zero(:,:,:) = cuissegauche(:,:,:);
@@ -103,9 +120,9 @@ classdef HumanModel < handle
             
             for i=1:1:size(obj.cuissegaucheAcc,1)
                 obj.pelvis_mat(:,:,i)=pelvis_mat_zero(:,:,i);
-                obj.pelvis_mat(:,:,i)=obj.pelvis_mat(:,:,i)*pelvis_offset;
+                %obj.pelvis_mat(:,:,i)=obj.pelvis_mat(:,:,i)*pelvis_offset;
                 obj.cuissegauche_mat(:,:,i)=cuissegauche_mat_zero(:,:,i);
-                obj.cuissegauche_mat(:,:,i)=obj.cuissegauche_mat(:,:,i)*cuissegauche_offset;
+                %obj.cuissegauche_mat(:,:,i)=obj.cuissegauche_mat(:,:,i)*cuissegauche_offset;
             end
         end
     end

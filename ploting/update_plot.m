@@ -133,6 +133,7 @@ for j=1:length(list_of_axes)
         allumoData.a{idx*3+k}.ZData=[POS(3);POS(3)+Rot(3,k)*0.1];
     end
 end
+
 drawnow();
 
 end
