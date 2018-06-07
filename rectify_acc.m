@@ -1,4 +1,4 @@
-function rectified_mat = rectify_acc( mat, fs, window, skip )
+function rectified_mat = rectify_acc( mat, fs, low_pass_cutoff, window, skip )
 % mat : matrix (3, :) with accelerometer data 
 % fs  : sampling rate of the accelerometer data
 % window : averaging windows length for gravity compensation and SVD
@@ -11,7 +11,7 @@ end
 
 len = length(mat(1,:));
 
-cof = 1/10; % Hz
+cof = low_pass_cutoff; % Hz
 nyquist = fs/2;
 wn = cof/nyquist;
 
@@ -21,9 +21,6 @@ filtered_mat = [
     filtfilt(b, a, mat(1,:));
     filtfilt(b, a, mat(2,:));
     filtfilt(b, a, mat(3,:))];
-
-ssc = @(v) [0 -v(3) v(2); v(3) 0 -v(1); -v(2) v(1) 0];
-RU = @(A,B) eye(3) + ssc(cross(A,B)) + ssc(cross(A,B))^2*(1-dot(A,B))/(norm(cross(A,B))^2);
 
 WINDOW = window*fs;
 gravity_compensated_mat = zeros(size(filtered_mat));
@@ -36,7 +33,7 @@ for i=1:len
 
         gvector = mean(filtered_mat(:, idx_min:idx_max), 2);
         g = [0, 0, -1]';
-        G = RU(gvector, g);
+        G = get_Q_aligning_2_vector(gvector, g);
         
         first = false;
     end

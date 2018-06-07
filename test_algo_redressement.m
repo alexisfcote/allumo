@@ -9,6 +9,14 @@ x = sin(angle);
 y = sin(8*pi*t)*0.05;
 z = -cos(angle);
 
+x(1:5*fs) = 0;
+y(1:5*fs) = 0;
+z(1:5*fs) = -1;
+
+x(end-5*fs:end) = 0;
+y(end-5*fs:end) = 0;
+z(end-5*fs:end) = -1;
+
 init_mat = [x; y; z];
 
 theta = pi/4;
@@ -17,7 +25,9 @@ phi   = pi/3;
 
 Q = eulerXZX(theta, psi, phi);
 
-mat = Q * [x; y; z] ;%+ 0.1*randn(3, length(t))';
+mat = Q * [x; y; z];
+%mat = mat + 0.1*randn(size(mat));
+
 
 % half way a shift of the sensor occured
 mat(:, ceil(length(mat(1,:))/2:end)) = eulerXZX(pi/6, pi/6, pi/4) * mat(:, ceil(length(mat(1,:))/2:end));
@@ -25,7 +35,7 @@ mat(:, ceil(length(mat(1,:))/2:end)) = eulerXZX(pi/6, pi/6, pi/4) * mat(:, ceil(
 
 %% Post treatment
 
-rectified_mat = rectify_acc(mat, fs, 20, 100);
+rectified_mat = rectify_acc(mat, fs, 10, 20, 100);
 
 %% plot
 figure
@@ -58,6 +68,14 @@ x = sin(angle);
 y = sin(32*pi*t)*0.03;
 z = -cos(angle);
 
+x(1:5*fs) = 0;
+y(1:5*fs) = 0;
+z(1:5*fs) = -1;
+
+x(end-5*fs:end) = 0;
+y(end-5*fs:end) = 0;
+z(end-5*fs:end) = -1;
+
 init_mat = [x; y; z];
 
 theta = pi/4;
@@ -66,13 +84,14 @@ phi   = pi/3;
 
 Q = eulerXZX(theta, psi, phi);
 
-mat = Q * [x; y; z] ;%+ 0.1*randn(3, length(t))';
+mat = Q * [x; y; z];
+%mat = mat + 0.1*randn(size(mat));
 
 % two third way a shift of the sensor occured
 mat(:, ceil(length(mat(1,:))*2/3:end)) = eulerXZX(pi/3, -pi/6, pi/4) * mat(:, ceil(length(mat(1,:))*2/3:end));
 %% Post treatment
 
-rectified_mat = rectify_acc(mat, fs, 20, 100);
+rectified_mat = rectify_acc(mat, fs, 10, 20, 100);
 
 %% plot
 figure

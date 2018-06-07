@@ -14,11 +14,19 @@ classdef HumanModel < handle
         
         pelvisfilename
         cuissefilename
-
+        
         sampling_rate
         timestamp
         
-        zeroed_time = {};
+        zeroed_times = {};
+    end
+    
+    properties
+        % Configuration parameters
+        rectify_window_length = 20 % s
+        rectify_skip = 100 % samples
+        rectify_low_pass_cutoff = 1/10 % Hz
+        filter_low_pass_cutoff = 5 % Hz
     end
     
     properties
@@ -61,7 +69,7 @@ classdef HumanModel < handle
                     hour = varargin{i+1};
                 end
             end
-   
+            
             
             [pathstr,name,ext] = fileparts(pelvisfilename);
             if strcmp(ext, '.xlsx')
@@ -92,22 +100,20 @@ classdef HumanModel < handle
         end
         
         function calculate_rotation_matrix(obj)
-            methodeAccelAngle = 1;
-            if (methodeAccelAngle==1)
-                for i=1:1:size(obj.cuissegaucheAcc,1)
-                    
-                    thetaX_pelvis = atan2(obj.pelvisAcc(i,1),obj.pelvisAcc(i,3));
-                    thetaY_pelvis = atan2(obj.pelvisAcc(i,2),obj.pelvisAcc(i,3));
-                    Rx_pelvis=[1 0 0;0 cos(thetaX_pelvis) -sin(thetaX_pelvis);0 sin(thetaX_pelvis) cos(thetaX_pelvis)];
-                    Ry_pelvis=[cos(thetaY_pelvis) 0 sin(thetaY_pelvis);0 1 0;-sin(thetaY_pelvis) 0 cos(thetaY_pelvis)];
-                    pelvis(:,:,i) = Ry_pelvis*Rx_pelvis*eye(3,3);
-                    
-                    thetaX_cuisse = atan2(obj.cuissegaucheAcc(i,1),obj.cuissegaucheAcc(i,3));
-                    thetaY_cuisse = atan2(obj.cuissegaucheAcc(i,2),obj.cuissegaucheAcc(i,3));
-                    Rx_cuisse=[1 0 0;0 cos(thetaX_cuisse) -sin(thetaX_cuisse);0 sin(thetaX_cuisse) cos(thetaX_cuisse)];
-                    Ry_cuisse=[cos(thetaY_cuisse) 0 sin(thetaY_cuisse);0 1 0;-sin(thetaY_cuisse) 0 cos(thetaY_cuisse)];
-                    cuissegauche(:,:,i) = Ry_cuisse*Rx_cuisse*eye(3,3);
-                end
+            
+            for i=1:1:size(obj.cuissegaucheAcc,1)
+                
+                thetaX_pelvis = atan2(obj.pelvisAcc(i,1),obj.pelvisAcc(i,3));
+                thetaY_pelvis = atan2(obj.pelvisAcc(i,2),obj.pelvisAcc(i,3));
+                Rx_pelvis=[1 0 0;0 cos(thetaX_pelvis) -sin(thetaX_pelvis);0 sin(thetaX_pelvis) cos(thetaX_pelvis)];
+                Ry_pelvis=[cos(thetaY_pelvis) 0 sin(thetaY_pelvis);0 1 0;-sin(thetaY_pelvis) 0 cos(thetaY_pelvis)];
+                pelvis(:,:,i) = Ry_pelvis*Rx_pelvis*eye(3,3);
+                
+                thetaX_cuisse = atan2(obj.cuissegaucheAcc(i,1),obj.cuissegaucheAcc(i,3));
+                thetaY_cuisse = atan2(obj.cuissegaucheAcc(i,2),obj.cuissegaucheAcc(i,3));
+                Rx_cuisse=[1 0 0;0 cos(thetaX_cuisse) -sin(thetaX_cuisse);0 sin(thetaX_cuisse) cos(thetaX_cuisse)];
+                Ry_cuisse=[cos(thetaY_cuisse) 0 sin(thetaY_cuisse);0 1 0;-sin(thetaY_cuisse) 0 cos(thetaY_cuisse)];
+                cuissegauche(:,:,i) = Ry_cuisse*Rx_cuisse*eye(3,3);
             end
             
             cuissegauche_mat_temp=cuissegauche;
@@ -125,7 +131,102 @@ classdef HumanModel < handle
                 %obj.cuissegauche_mat(:,:,i)=obj.cuissegauche_mat(:,:,i)*cuissegauche_offset;
             end
         end
+        
+        function filter(obj)
+            obj.pelvisAcc = obj.filter_mat(obj.raw_pelvisAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
+            obj.cuissegaucheAcc = obj.filter_mat(obj.raw_cuissegaucheAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
+        end
+        
+        function rectify(obj)
+            obj.filter()
+            obj.pelvisAcc = rectify_acc(...
+                obj.pelvisAcc,...
+                obj.sampling_rate, ...
+                obj.rectify_low_pass_cutoff, ...
+                obj.rectify_window_length, ...
+                obj.rectify_skip );
+            obj.cuissegaucheAcc = rectify_acc(...
+                obj.cuissegaucheAcc, ...
+                obj.sampling_rate, ...
+                obj.rectify_low_pass_cutoff, ...
+                obj.rectify_window_length, ...
+                obj.rectify_skip );
+            
+            obj.apply_all_zeroed_time()
+            obj.calculate_rotation_matrix()
+            
+        end
+        
+        function set_zeroed_point(obj,index_zero , index_start, index_stop)
+            lowpelvisAcc = obj.filter_mat(obj.raw_pelvisAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
+            lowcuissegaucheAcc = obj.filter_mat(obj.raw_cuissegaucheAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
+            
+            Qpelvis = HumanModel.get_rectifying_Q(...
+                lowpelvisAcc(index_zero, :)', ...
+                lowpelvisAcc(index_start:index_stop, :)'...
+                );
+            Qcuissegauche = HumanModel.get_rectifying_Q(...
+                lowcuissegaucheAcc(index_zero, :)', ...
+                lowcuissegaucheAcc(index_start:index_stop, :)'...
+                );
+            
+            zeroed_time = ZeroedTime(index_start, index_stop, Qpelvis, Qcuissegauche);
+            obj.zeroed_times{end+1} = zeroed_time;
+            
+            obj.apply_zeroed_time(zeroed_time);
+            obj.calculate_rotation_matrix()
+        end
+        
+        function apply_zeroed_time(obj, zeroed_time)
+            pelvisAcc = obj.filter_mat(obj.raw_pelvisAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
+            cuissegaucheAcc = obj.filter_mat(obj.raw_cuissegaucheAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
+            
+            for i=zeroed_time.start_index:zeroed_time.stop_index
+                obj.pelvisAcc(i, :) = (zeroed_time.Qpelvis *  pelvisAcc(i, :)')';
+                obj.cuissegaucheAcc(i, :) = (zeroed_time.Qcuissegauche *  cuissegaucheAcc(i, :)')';
+            end
+        end       
+        
+        function apply_all_zeroed_time(obj)
+            for i = 1:length(obj.zeroed_times)
+                zeroed_time = obj.zeroed_times{i};
+                if ~isempty(zeroed_time)
+                    obj.apply_zeroed_time(zeroed_time);
+                end
+            end
+        end
+        
+        function clear_all_zeroed_time(obj)
+            obj.zeroed_times = {};
+            obj.rectify();
+        end
     end
-    
+    methods(Static)
+        function Q = get_rectifying_Q(gvector, mat)
+            g = [0 0 -1]';
+            Q1 = get_Q_aligning_2_vector(gvector, g);
+            
+            gravity_compensated_mat = Q1*mat;
+            [U,~,~] = svd(gravity_compensated_mat(1:2, :));
+            Q2 = eye(3);
+            Q2(1:2, 1:2) = U;
+            Q = Q2 * Q1;
+            
+        end
+        
+        function filtered_mat = filter_mat(mat, sampling_rate, cut_off_frequency)
+            cof = cut_off_frequency; % Hz
+            nyquist = sampling_rate/2;
+            wn = cof/nyquist;
+            
+            [b, a] = butter(4, wn, 'low');
+            
+            filtered_mat = zeros(size(mat));
+            for i=1:length(mat(1,:))
+                filtered_mat(:,i) = filtfilt(b, a, mat(:,i));
+            end
+        end
+        
+    end
 end
 

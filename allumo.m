@@ -37,6 +37,12 @@ btnnexthour = uicontrol('Parent', hboxhourbutton, ...
 btnrectify = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Rectify',...
     'Callback',@btnrectify_Callback);
+btnselectzeroed = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Select Calibrated Zone',...
+    'Callback',@btnselectzeroed_Callback);
+btnclearselectzeroed = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Clear Calibrated Zone',...
+    'Callback',@btnclearselectzeroed_Callback);
 
 
 % ------ Control panel End -------
@@ -89,17 +95,6 @@ uix.Empty( 'Parent', othergrid );
 ha = axes('Parent', vboxmain);
 set(ha, 'DataAspectRatioMode', 'manual')
 
-% Create the data to plot.
-peaks_data = peaks(35);
-membrane_data = membrane;
-[x,y] = meshgrid(-8:.5:8);
-r = sqrt(x.^2+y.^2) + eps;
-sinc_data = sin(r)./r;
-
-%Create a plot in the axes.
-current_data = peaks_data;
-surf(current_data);
-
 % -- Main Layout End -------
 set_layout()
 
@@ -120,6 +115,13 @@ addlistener(data,'pelvis_path','PostSet', @update_ui_Callback);
 addlistener(data,'cuisse_path','PostSet', @update_ui_Callback);
 addlistener(data,'hour','PostSet', @update_ui_Callback);
 
+% Selection Modes
+selection_mode = 'normal';
+selected_zero_index  = 0;
+selected_start_index = 0;
+selected_stop_index  = 0;
+selected_plots = {};
+
 try_get_files();
 
 %% Callbacks
@@ -129,7 +131,7 @@ try_get_files();
 
     function set_layout()
         set(vboxpanesetting, 'Height', [30 30 -1])
-        set(hboxhourbutton, 'Widths', [100 100 100 100])
+        set(hboxhourbutton, 'Widths', [100 100 100 100 130 130])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1] );
@@ -214,11 +216,14 @@ try_get_files();
     end
 
     function btnrectify_Callback(source, eventdata)
-        data.humanModel.pelvisAcc = rectify_acc(data.humanModel.raw_pelvisAcc, data.humanModel.sampling_rate, 20, 100 );
-        data.humanModel.cuissegaucheAcc = rectify_acc(data.humanModel.raw_cuissegaucheAcc, data.humanModel.sampling_rate, 20, 100 );
-        data.humanModel.calculate_rotation_matrix()
+        data.humanModel.rectify()
         update_plot(data, 1)
         update_graph_plot(data, 1);
+    end
+
+    function btnselectzeroed_Callback(source, eventdata)
+        selection_mode = 'selectzeroed';
+        set(f, 'Pointer', 'crosshair')
     end
 
     function slidercontrol_Callback(source, eventdata)
@@ -233,8 +238,75 @@ try_get_files();
     end
 
     function hatrajectory_Callback(source, event)
-        index = find(data.humanModel.timestamp() > event.IntersectionPoint(1), 1, 'first');
-        slidercontrol.Value = index;
+        if strcmp(selection_mode, 'normal')
+            index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+            slidercontrol.Value = index;
+            slidercontrol_Callback(slidercontrol, 0)
+            
+        elseif strcmp(selection_mode, 'selectzeroed')
+            selected_zero_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+            slidercontrol.Value = selected_zero_index;
+            slidercontrol_Callback(slidercontrol, 0)
+            set(f, 'Pointer', 'ibeam')
+            selection_mode = 'first_selection';
+            
+            axes(hatrajectory)
+            selected_zero_time = data.humanModel.timestamp(selected_zero_index);
+            h = plot([selected_zero_time, selected_zero_time], get(hatrajectory, 'Ylim'), 'r');
+            selected_plots{end+1} = h;
+            
+            
+        elseif strcmp(selection_mode, 'first_selection')
+            selected_start_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+            selection_mode = 'second_selection';
+            
+            axes(hatrajectory)
+            selected_start_time = data.humanModel.timestamp(selected_start_index);
+            h = plot([selected_start_time, selected_start_time], get(hatrajectory, 'Ylim'), 'g');
+            selected_plots{end+1} = h;
+            
+        elseif strcmp(selection_mode, 'second_selection')
+            selected_stop_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+
+            set(f, 'Pointer', 'arrow')
+            selection_mode = 'normal';
+            
+            selected_stop_time = data.humanModel.timestamp(selected_stop_index);
+            
+            % plot the selection
+            axes(hatrajectory)
+            h = plot([selected_stop_time, selected_stop_time], get(hatrajectory, 'Ylim'), 'g');
+            selected_plots{end+1} = h;
+            
+            selected_start_time = data.humanModel.timestamp(selected_start_index);
+            
+            ylim = get(hatrajectory, 'Ylim');
+            h = fill([selected_start_time selected_start_time selected_stop_time selected_stop_time],[ ylim(1) ylim(2) ylim(2) ylim(1)], 'g');
+            set(h,'facealpha',.3)
+            set(h, 'edgealpha', 0)
+            set(h, 'ButtonDownFcn', @hatrajectory_Callback)
+            selected_plots{end+1} = h;
+            
+            if selected_stop_index < selected_start_index
+                tmp = selected_stop_index;
+                selected_stop_index = selected_start_index;
+                selected_start_index = tmp;
+            end
+            
+            % save to model and process
+            data.humanModel.set_zeroed_point(selected_zero_index, selected_start_index, selected_stop_index)
+            
+            % update plots
+            slidercontrol_Callback(slidercontrol, 0)
+        end
+        
+    end
+
+    function btnclearselectzeroed_Callback(source, event)
+        for i=1:length(selected_plots)
+            delete(selected_plots{i});
+            data.humanModel.clear_all_zeroed_time();
+        end
         slidercontrol_Callback(slidercontrol, 0)
     end
     
