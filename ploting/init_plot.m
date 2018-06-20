@@ -104,6 +104,7 @@ list_of_axes = {
     [Bassin_POS, Bassin_Rot]
     };
 
+
 hold off;
 allumoData.p{1} = plot3([Bassin_POS(1);Bassin_POS(1)],[Bassin_POS(2);Bassin_POS(2)],[Bassin_POS(3);Bassin_POS(3)],'ob');
 hold on;

@@ -14,6 +14,10 @@ classdef AllumoData < handle
         a = {} % plot axes objects
         tete % plot object
         
+        videoReader
+        mainAxes
+        videoAxes
+        
         pelvisplot = {}
         cuisseplot = {}
         lineplot

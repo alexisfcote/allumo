@@ -85,11 +85,12 @@ classdef HumanModel < handle
                 obj.pelvisAcc       = dlmread(pelvisfilename, ',',[start_at 0 end_at 2]);
                 obj.cuissegaucheAcc = dlmread(cuissefilename, ',',[start_at 0 end_at 2]);
             elseif strcmp(ext, '.csv')
-                start_at = obj.sampling_rate*3600*hour+1;
-                end_at   = obj.sampling_rate*3600*(hour+1);
+                start_at = 1;
                 
-                obj.pelvisAcc       = dlmread(pelvisfilename, ',');
-                obj.cuissegaucheAcc = dlmread(cuissefilename, ',');
+                obj.pelvisAcc       = dlmread(pelvisfilename, ',', 11+start_at, 1);
+                obj.cuissegaucheAcc = dlmread(cuissefilename, ',', 11+start_at, 1);
+                obj.pelvisAcc       = obj.pelvisAcc(:,1:3);
+                obj.cuissegaucheAcc = obj.cuissegaucheAcc(:,1:3);
             end
             
             obj.raw_pelvisAcc = obj.pelvisAcc(:, :);
@@ -118,18 +119,9 @@ classdef HumanModel < handle
             
             cuissegauche_mat_temp=cuissegauche;
             
-            pelvis_mat_zero(:,:,:) = pelvis(:,:,:);
-            cuissegauche_mat_zero(:,:,:) = cuissegauche(:,:,:);
-            
-            cuissegauche_offset=cuissegauche_mat_zero(:,:,1)';
-            pelvis_offset=pelvis_mat_zero(:,:,1)';
-            
-            for i=1:1:size(obj.cuissegaucheAcc,1)
-                obj.pelvis_mat(:,:,i)=pelvis_mat_zero(:,:,i);
-                %obj.pelvis_mat(:,:,i)=obj.pelvis_mat(:,:,i)*pelvis_offset;
-                obj.cuissegauche_mat(:,:,i)=cuissegauche_mat_zero(:,:,i);
-                %obj.cuissegauche_mat(:,:,i)=obj.cuissegauche_mat(:,:,i)*cuissegauche_offset;
-            end
+            obj.pelvis_mat(:,:,:) = pelvis(:,:,:);
+            obj.cuissegauche_mat(:,:,:) = cuissegauche(:,:,:);
+           
         end
         
         function filter(obj)

@@ -78,6 +78,15 @@ btnload = uicontrol('Parent', hbox, ...
     'Style','pushbutton','String','Load',...
     'Callback',@btnload_Callback);
 
+btnloadvideo = uicontrol('Parent', hbox, ...
+    'Style','pushbutton','String','Load Video',...
+    'Callback',@btnloadvideo_Callback);
+
+editvideooffset = uicontrol('Parent', hbox, ...
+    'Style','edit','String','0',...
+    'Callback',@editvideooffset_Callback);
+
+
 % ------ Setting panel End -------
 
 % ------ Other panel Start -------
@@ -91,12 +100,12 @@ uix.Empty( 'Parent', othergrid );
 
 
 % ------ Other panel End -------
-
-ha = axes('Parent', vboxmain);
+hboxmain = uix.HBox('Parent', vboxmain);
+ha = axes('Parent', hboxmain);
 set(ha, 'DataAspectRatioMode', 'manual')
+havideo = axes('Parent', hboxmain);
 
 % -- Main Layout End -------
-set_layout()
 
 % Assign the GUI a name to appear in the window title.
 f.Name = 'Allumo';
@@ -109,6 +118,8 @@ f.Visible = 'on';
 
 % Create the gui dataclass
 data = AllumoData();
+data.mainAxes = ha;
+data.videoAxes = havideo;
 
 % Create the listeners
 addlistener(data,'pelvis_path','PostSet', @update_ui_Callback);
@@ -123,6 +134,7 @@ selected_start_index = 0;
 selected_stop_index  = 0;
 selected_plots = {};
 
+set_layout()
 try_get_files();
 
 %% Callbacks
@@ -135,10 +147,14 @@ try_get_files();
         set(hboxhourbutton, 'Widths', [100 100 100 100 130 130])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
-        set( hbox, 'Widths', [-3 -1] );
+        set( hbox, 'Widths', [-3 -1 -1 -1] );
         set( buttonvbox, 'Height', [30, 30, 30]);
-        set( vboxmain, 'Height', [200 400] );
-        
+        set( vboxmain, 'Height', [200 -1] );
+        if isempty(data.videoReader)
+            set( hboxmain, 'Widths', [0, -1] )
+        else
+            set( hboxmain, 'Widths', [-1 -1] )
+        end
         
     end
 
@@ -152,7 +168,7 @@ try_get_files();
                 set(data.pelvisplot{i}, 'ButtonDownFcn', @hatrajectory_Callback)
                 set(data.cuisseplot{i}, 'ButtonDownFcn', @hatrajectory_Callback)
             end
-            set(labelhour, 'String', datestr(seconds(data.hour*3600),'HH:MM:SS PM'))
+            set(labelhour, 'String', datestr(seconds(data.hour*3600 + round(slidercontrol.Value)/data.humanModel.sampling_rate),'HH:MM:SS PM'))
         end        
         set_layout()
         set(ha, 'DataAspectRatioMode', 'manual')
@@ -232,6 +248,12 @@ try_get_files();
         set(source, 'Value', value);
         update_plot(data, value)
         update_graph_plot(data, value);
+        if ~isempty(data.videoReader)
+            update_video(value/data.humanModel.sampling_rate + str2num(get(editvideooffset, 'String')))
+        end
+        set(labelhour, 'String', datestr(seconds(data.hour*3600 + round(slidercontrol.Value)/data.humanModel.sampling_rate),'HH:MM:SS PM'))
+
+        
     end
     
     function btndebug_Callback(source, event)
@@ -316,9 +338,36 @@ try_get_files();
     function btnclearselectcalibrationzone1_Callback(source, event)
         for i=1:length(selected_plots)
             delete(selected_plots{i});
-            data.humanModel.clear_all_calibrationzone_time();
+            data.humanModel.clear_all_calibration_time();
         end
         slidercontrol_Callback(slidercontrol, 0)
+    end
+
+    function btnloadvideo_Callback(source, event)
+        [FileName,PathName,FilterIndex] = uigetfile('*.*' ,'Charger un fichier video');
+        if ~FilterIndex
+            return
+        end
+        data.videoReader = VideoReader([PathName, FileName]);
+        
+        update_ui_Callback(0, 0)
+        update_video(max(0 + str2num(get(editvideooffset, 'String')), 0))
+        
+    end
+
+    function editvideooffset_Callback(source, event)
+        slidercontrol_Callback(slidercontrol, 0)
+    end
+
+    function update_video(time)
+        time = max(time,0);
+        time = min(time, data.videoReader.Duration-0.1);
+        set(data.videoReader, 'CurrentTime', time)
+        vidFrame = readFrame(data.videoReader);
+        image(vidFrame, 'Parent', havideo);
+        axes(havideo)
+        axis equal
+        set(havideo, 'Visible', 'Off')
     end
     
     %% Misc function 
@@ -340,8 +389,13 @@ try_get_files();
 %         end
         
         % load test
-        data.cuisse_path = strcat(pwd, '\jambe-test.csv');
-        data.pelvis_path = strcat(pwd, '\pelvis-test.csv');
+        %data.cuisse_path = strcat(pwd, '\jambe-test.csv');
+        %data.pelvis_path = strcat(pwd, '\pelvis-test.csv');
+        
+        % load test
+        data.cuisse_path = strcat(pwd, '\data', '\LBP49jambe (2018-03-20)RAW.csv');
+        data.pelvis_path = strcat(pwd, '\data', '\LBP49tronc (2018-03-20)RAW.csv');
+        
         btnload_Callback(0, 0)
     end
 end
