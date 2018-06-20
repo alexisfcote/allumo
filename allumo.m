@@ -143,8 +143,8 @@ try_get_files();
 %  because they are nested at a lower level.
 
     function set_layout()
-        set(vboxpanesetting, 'Height', [30 30 -1])
-        set(hboxhourbutton, 'Widths', [100 100 100 100 130 130])
+        set( vboxpanesetting, 'Height', [30 30 -1])
+        set( hboxhourbutton, 'Widths', [100 100 100 100 130 130])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1 -1 -1] );
@@ -205,7 +205,7 @@ try_get_files();
     function btnload_Callback(source,eventdata)
         if ~isempty(data.pelvis_path) && ~isempty(data.cuisse_path)
             axes(ha)
-            data.humanModel = HumanModel(data.pelvis_path, data.cuisse_path, 30);
+            data.humanModel = HumanModel(data.pelvis_path, data.cuisse_path, 60);
             init_plot(data)
             set(slidercontrol, 'Value', 1,...
                 'min', 1, 'max', length(data.humanModel.timestamp) , ...
@@ -213,6 +213,7 @@ try_get_files();
             
             axes(hatrajectory)
             init_graph_plot(data)
+            
             
             update_ui_Callback(0,0)
         end
@@ -388,13 +389,17 @@ try_get_files();
 %             data.pelvis_path = pelvis_path;
 %         end
         
-        % load test
-        %data.cuisse_path = strcat(pwd, '\jambe-test.csv');
-        %data.pelvis_path = strcat(pwd, '\pelvis-test.csv');
+%         load test
+%         data.cuisse_path = strcat(pwd, '\jambe-test.csv');
+%         data.pelvis_path = strcat(pwd, '\pelvis-test.csv');
         
-        % load test
-        data.cuisse_path = strcat(pwd, '\data', '\LBP49jambe (2018-03-20)RAW.csv');
-        data.pelvis_path = strcat(pwd, '\data', '\LBP49tronc (2018-03-20)RAW.csv');
+%         load test
+%         data.cuisse_path = strcat(pwd, '\data', '\LBP49jambe (2018-03-20)RAW.csv');
+%         data.pelvis_path = strcat(pwd, '\data', '\LBP49tronc (2018-03-20)RAW.csv');
+
+%         load test
+        data.cuisse_path = strcat(pwd, '\data', '\CLE2B23130402 (2018-06-20)RAW jambe.csv');
+        data.pelvis_path = strcat(pwd, '\data', '\CLE2B23130391 (2018-06-20)RAW tronc.csv');
         
         btnload_Callback(0, 0)
     end

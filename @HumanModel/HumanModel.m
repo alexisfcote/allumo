@@ -87,12 +87,15 @@ classdef HumanModel < handle
             elseif strcmp(ext, '.csv')
                 start_at = 1;
                 
-                obj.pelvisAcc       = dlmread(pelvisfilename, ',', 11+start_at, 1);
-                obj.cuissegaucheAcc = dlmread(cuissefilename, ',', 11+start_at, 1);
-                obj.pelvisAcc       = obj.pelvisAcc(:,1:3);
-                obj.cuissegaucheAcc = obj.cuissegaucheAcc(:,1:3);
+                obj.pelvisAcc       = dlmread(pelvisfilename, ',', 11+start_at, 0);
+                obj.cuissegaucheAcc = dlmread(cuissefilename, ',', 11+start_at, 0);
+                
+                
             end
-            
+            min_len = min(length(obj.pelvisAcc), length(obj.cuissegaucheAcc));
+            obj.pelvisAcc       = obj.pelvisAcc(1:min_len,1:3);
+            obj.cuissegaucheAcc = obj.cuissegaucheAcc(1:min_len,1:3);
+                
             obj.raw_pelvisAcc = obj.pelvisAcc(:, :);
             obj.raw_cuissegaucheAcc = obj.cuissegaucheAcc(:, :);
             obj.timestamp = (start_at + [1:length(obj.cuissegaucheAcc)]) / obj.sampling_rate;

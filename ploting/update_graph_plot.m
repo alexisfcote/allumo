@@ -16,7 +16,7 @@ axe.XTickLabel = arrayfun(@(x) datestr(seconds(x),'HH:MM:SS PM') ,axe.XTick, 'Un
 
 min_value = min(min([humanModel.pelvisAcc ; humanModel.cuissegaucheAcc]));
 max_value = max(max([humanModel.pelvisAcc ; humanModel.cuissegaucheAcc]));
-ylim([min_value max_value])
+ylim([-1.2 1.2])
 
 allumoData.lineplot.XData = [humanModel.timestamp(index) humanModel.timestamp(index)];
 allumoData.lineplot.YData = [min_value max_value];
