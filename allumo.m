@@ -37,12 +37,12 @@ btnnexthour = uicontrol('Parent', hboxhourbutton, ...
 btnrectify = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Rectify',...
     'Callback',@btnrectify_Callback);
-btnselectzeroed = uicontrol('Parent', hboxhourbutton, ...
+btnselectcalibrationzone1 = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Select Calibrated Zone',...
-    'Callback',@btnselectzeroed_Callback);
-btnclearselectzeroed = uicontrol('Parent', hboxhourbutton, ...
+    'Callback',@btnselectcalibrationzone1_Callback);
+btnclearselectcalibrationzone1 = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Clear Calibrated Zone',...
-    'Callback',@btnclearselectzeroed_Callback);
+    'Callback',@btnclearselectcalibrationzone1_Callback);
 
 
 % ------ Control panel End -------
@@ -117,7 +117,8 @@ addlistener(data,'hour','PostSet', @update_ui_Callback);
 
 % Selection Modes
 selection_mode = 'normal';
-selected_zero_index  = 0;
+selected_calibration_start_index  = 0;
+selected_calibration_stop_index  = 0;
 selected_start_index = 0;
 selected_stop_index  = 0;
 selected_plots = {};
@@ -136,7 +137,7 @@ try_get_files();
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1] );
         set( buttonvbox, 'Height', [30, 30, 30]);
-        set( vboxmain, 'Height', [200 600] );
+        set( vboxmain, 'Height', [200 400] );
         
         
     end
@@ -221,8 +222,8 @@ try_get_files();
         update_graph_plot(data, 1);
     end
 
-    function btnselectzeroed_Callback(source, eventdata)
-        selection_mode = 'selectzeroed';
+    function btnselectcalibrationzone1_Callback(source, eventdata)
+        selection_mode = 'selectcalibrationzone1';
         set(f, 'Pointer', 'crosshair')
     end
 
@@ -243,18 +244,28 @@ try_get_files();
             slidercontrol.Value = index;
             slidercontrol_Callback(slidercontrol, 0)
             
-        elseif strcmp(selection_mode, 'selectzeroed')
-            selected_zero_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
-            slidercontrol.Value = selected_zero_index;
+        elseif strcmp(selection_mode, 'selectcalibrationzone1')
+            selected_calibration_start_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+            slidercontrol.Value = selected_calibration_start_index;
+            slidercontrol_Callback(slidercontrol, 0)
+            selection_mode = 'selectcalibrationzone2';
+            
+            axes(hatrajectory)
+            selected_calibration_time1 = data.humanModel.timestamp(selected_calibration_start_index);
+            h = plot([selected_calibration_time1, selected_calibration_time1], get(hatrajectory, 'Ylim'), 'r');
+            selected_plots{end+1} = h;
+            
+        elseif strcmp(selection_mode, 'selectcalibrationzone2')
+            selected_calibration_stop_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+            slidercontrol.Value = selected_calibration_stop_index;
             slidercontrol_Callback(slidercontrol, 0)
             set(f, 'Pointer', 'ibeam')
             selection_mode = 'first_selection';
             
             axes(hatrajectory)
-            selected_zero_time = data.humanModel.timestamp(selected_zero_index);
-            h = plot([selected_zero_time, selected_zero_time], get(hatrajectory, 'Ylim'), 'r');
+            selected_calibration_time2 = data.humanModel.timestamp(selected_calibration_start_index);
+            h = plot([selected_calibration_time2, selected_calibration_time2], get(hatrajectory, 'Ylim'), 'r');
             selected_plots{end+1} = h;
-            
             
         elseif strcmp(selection_mode, 'first_selection')
             selected_start_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
@@ -294,7 +305,7 @@ try_get_files();
             end
             
             % save to model and process
-            data.humanModel.set_zeroed_point(selected_zero_index, selected_start_index, selected_stop_index)
+            data.humanModel.set_calibrationzone_point(selected_calibration_start_index, selected_calibration_stop_index, selected_start_index, selected_stop_index)
             
             % update plots
             slidercontrol_Callback(slidercontrol, 0)
@@ -302,10 +313,10 @@ try_get_files();
         
     end
 
-    function btnclearselectzeroed_Callback(source, event)
+    function btnclearselectcalibrationzone1_Callback(source, event)
         for i=1:length(selected_plots)
             delete(selected_plots{i});
-            data.humanModel.clear_all_zeroed_time();
+            data.humanModel.clear_all_calibrationzone_time();
         end
         slidercontrol_Callback(slidercontrol, 0)
     end
@@ -314,19 +325,19 @@ try_get_files();
     function try_get_files()
         
         % load sentinelle
-        cuisse_path = dir('data\*Jambe*');
-        cuisse_path = cuisse_path(2);
-        if ~isempty(cuisse_path)
-            cuisse_path = strcat(pwd, '\data\', cuisse_path.name);
-            data.cuisse_path = cuisse_path;
-        end
-        
-        pelvis_path = dir('data\*Tronc*');
-        pelvis_path = pelvis_path(2);
-        if ~isempty(pelvis_path)
-            pelvis_path = strcat(pwd, '\data\', pelvis_path.name);
-            data.pelvis_path = pelvis_path;
-        end
+%         cuisse_path = dir('data\*Jambe*');
+%         cuisse_path = cuisse_path(2);
+%         if ~isempty(cuisse_path)
+%             cuisse_path = strcat(pwd, '\data\', cuisse_path.name);
+%             data.cuisse_path = cuisse_path;
+%         end
+%         
+%         pelvis_path = dir('data\*Tronc*');
+%         pelvis_path = pelvis_path(2);
+%         if ~isempty(pelvis_path)
+%             pelvis_path = strcat(pwd, '\data\', pelvis_path.name);
+%             data.pelvis_path = pelvis_path;
+%         end
         
         % load test
         data.cuisse_path = strcat(pwd, '\jambe-test.csv');

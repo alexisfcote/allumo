@@ -18,7 +18,7 @@ classdef HumanModel < handle
         sampling_rate
         timestamp
         
-        zeroed_times = {};
+        calibration_times = {};
     end
     
     properties
@@ -152,52 +152,52 @@ classdef HumanModel < handle
                 obj.rectify_window_length, ...
                 obj.rectify_skip );
             
-            obj.apply_all_zeroed_time()
+            obj.apply_all_calibration_time()
             obj.calculate_rotation_matrix()
             
         end
         
-        function set_zeroed_point(obj,index_zero , index_start, index_stop)
+        function set_calibrationzone_point(obj,index_calibration_start,index_calibration_stop, index_start, index_stop)
             lowpelvisAcc = obj.filter_mat(obj.raw_pelvisAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
             lowcuissegaucheAcc = obj.filter_mat(obj.raw_cuissegaucheAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
             
             Qpelvis = HumanModel.get_rectifying_Q(...
-                lowpelvisAcc(index_zero, :)', ...
+                mean(lowpelvisAcc(index_calibration_start:index_calibration_stop, :))', ...
                 lowpelvisAcc(index_start:index_stop, :)'...
                 );
             Qcuissegauche = HumanModel.get_rectifying_Q(...
-                lowcuissegaucheAcc(index_zero, :)', ...
+                mean(lowcuissegaucheAcc(index_calibration_start:index_calibration_stop, :))', ...
                 lowcuissegaucheAcc(index_start:index_stop, :)'...
                 );
             
-            zeroed_time = ZeroedTime(index_start, index_stop, Qpelvis, Qcuissegauche);
-            obj.zeroed_times{end+1} = zeroed_time;
+            calibration_time = CalibrationTime(index_start, index_stop, Qpelvis, Qcuissegauche);
+            obj.calibration_times{end+1} = calibration_time;
             
-            obj.apply_zeroed_time(zeroed_time);
+            obj.apply_calibration_time(calibration_time);
             obj.calculate_rotation_matrix()
         end
         
-        function apply_zeroed_time(obj, zeroed_time)
+        function apply_calibration_time(obj, calibration_time)
             pelvisAcc = obj.filter_mat(obj.raw_pelvisAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
             cuissegaucheAcc = obj.filter_mat(obj.raw_cuissegaucheAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
             
-            for i=zeroed_time.start_index:zeroed_time.stop_index
-                obj.pelvisAcc(i, :) = (zeroed_time.Qpelvis *  pelvisAcc(i, :)')';
-                obj.cuissegaucheAcc(i, :) = (zeroed_time.Qcuissegauche *  cuissegaucheAcc(i, :)')';
+            for i=calibration_time.start_index:calibration_time.stop_index
+                obj.pelvisAcc(i, :) = (calibration_time.Qpelvis *  pelvisAcc(i, :)')';
+                obj.cuissegaucheAcc(i, :) = (calibration_time.Qcuissegauche *  cuissegaucheAcc(i, :)')';
             end
         end       
         
-        function apply_all_zeroed_time(obj)
-            for i = 1:length(obj.zeroed_times)
-                zeroed_time = obj.zeroed_times{i};
-                if ~isempty(zeroed_time)
-                    obj.apply_zeroed_time(zeroed_time);
+        function apply_all_calibration_time(obj)
+            for i = 1:length(obj.calibration_times)
+                calibration_time = obj.calibration_times{i};
+                if ~isempty(calibration_time)
+                    obj.apply_calibration_time(calibration_time);
                 end
             end
         end
         
-        function clear_all_zeroed_time(obj)
-            obj.zeroed_times = {};
+        function clear_all_calibration_time(obj)
+            obj.calibration_times = {};
             obj.rectify();
         end
     end
