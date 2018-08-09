@@ -1,16 +1,22 @@
 function allumo
-% SIMPLE_GUI2 Select a data set from the pop-up menu, then
-% click one of the plot-type push buttons. Clicking the button
-% plots the selected data in the axes.
+% Main allumoGUI
 addpath('layout')
 addpath('ploting')
 %  Create and then hide the GUI as it is being constructed.
-f = figure('Visible','off','Position',[360,500,1200,800]);
+
+gui_name = 'Allumo';
+f = make_singleton(gui_name);
+if isempty(f) % Allumo already open
+    return
+end
+f.Visible = 'off';
+f.Position = [360,500,1200,800];
+f.MenuBar = 'None';
+
 
 %% Construct the layout
 % -- Main Layout Begin -------
 vboxmain = uix.VBox('Parent', f, 'Spacing', 3, 'Padding', 5);
-
 
 p = uix.TabPanel( 'Parent', vboxmain, 'Padding', 5 );
 panecontrol = uix.Panel( 'Parent', p );
@@ -27,13 +33,7 @@ slidercontrol = uicontrol('Parent', vboxpanesetting, ...
 hatrajectory = axes('Parent', vboxpanesetting, 'Units','Pixels');
 hboxhourbutton = uix.HBox( 'Parent', vboxpanesetting, 'Spacing', 5 );
 labelhour = uicontrol('Parent', hboxhourbutton, ...
-    'Style','text','String','', 'Fontsize', 16);
-btnprevhour = uicontrol('Parent', hboxhourbutton, ...
-    'Style','pushbutton','String','Previous hour',...
-    'Callback',@btnprevhour_Callback);
-btnnexthour = uicontrol('Parent', hboxhourbutton, ...
-    'Style','pushbutton','String','Next hour',...
-    'Callback',@btnnexthour_Callback);
+    'Style','text','String','', 'Fontsize', 12);
 btnrectify = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Rectify',...
     'Callback',@btnrectify_Callback);
@@ -44,6 +44,9 @@ btnclearselectcalibrationzone1 = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Clear Calibrated Zone',...
     'Callback',@btnclearselectcalibrationzone1_Callback);
 
+btnplay = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Play',...
+    'Callback',@btnplay_Callback);
 
 % ------ Control panel End -------
 
@@ -69,20 +72,27 @@ btnopenpelvis = uicontrol('Parent', hboxpelvis, ...
     'Style','pushbutton','String','Open Pelvis',...
     'Callback',@btnopenpelvis_Callback);
 
+popup_filetype = uicontrol('Parent', buttonvbox, ...
+    'Style','popupmenu','String',{'Auto', 'ActiGraph', 'ActiGraph-notimestamp', 'xlsx'});
 
 btnclear = uicontrol('Parent', buttonvbox, ...
     'Style','pushbutton','String','Clear',...
     'Callback',@btnclear_Callback);
 
-btnload = uicontrol('Parent', hbox, ...
+
+btnload = uicontrol('Parent', buttonvbox, ...
     'Style','pushbutton','String','Load',...
     'Callback',@btnload_Callback);
 
-btnloadvideo = uicontrol('Parent', hbox, ...
+vboxvideo = uix.VBox('Parent', hbox);
+
+btnloadvideo = uicontrol('Parent', vboxvideo, ...
     'Style','pushbutton','String','Load Video',...
     'Callback',@btnloadvideo_Callback);
 
-editvideooffset = uicontrol('Parent', hbox, ...
+uicontrol('Parent', vboxvideo, 'Style', 'text', 'String', 'Video Time Offset (s)')
+
+editvideooffset = uicontrol('Parent', vboxvideo, ...
     'Style','edit','String','0',...
     'Callback',@editvideooffset_Callback);
 
@@ -100,7 +110,7 @@ uix.Empty( 'Parent', othergrid );
 
 
 % ------ Other panel End -------
-hboxmain = uix.HBox('Parent', vboxmain);
+hboxmain = uix.HBox('Parent', vboxmain, 'Spacing', 0, 'Padding', 0);
 ha = axes('Parent', hboxmain);
 set(ha, 'DataAspectRatioMode', 'manual')
 havideo = axes('Parent', hboxmain);
@@ -111,6 +121,10 @@ havideo = axes('Parent', hboxmain);
 f.Name = 'Allumo';
 % Move the GUI to the center of the screen.
 movegui(f,'center')
+
+% Keyboard callback
+set(f, 'KeyPressFcn', @KeyPressFcn_Callback)
+
 % Make the GUI visible.
 f.Visible = 'on';
 
@@ -124,7 +138,6 @@ data.videoAxes = havideo;
 % Create the listeners
 addlistener(data,'pelvis_path','PostSet', @update_ui_Callback);
 addlistener(data,'cuisse_path','PostSet', @update_ui_Callback);
-addlistener(data,'hour','PostSet', @update_ui_Callback);
 
 % Selection Modes
 selection_mode = 'normal';
@@ -144,11 +157,12 @@ try_get_files();
 
     function set_layout()
         set( vboxpanesetting, 'Height', [30 30 -1])
-        set( hboxhourbutton, 'Widths', [100 100 100 100 130 130])
+        set( hboxhourbutton, 'Widths', [200 100 130 130 80])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
-        set( hbox, 'Widths', [-3 -1 -1 -1] );
-        set( buttonvbox, 'Height', [30, 30, 30]);
+        set( hbox, 'Widths', [-3 -1] );
+        set( buttonvbox, 'Height', [30, 30, 30, 30, 30]);
+        set( vboxvideo, 'Height', [30, 20, 30]);
         set( vboxmain, 'Height', [200 -1] );
         if isempty(data.videoReader)
             set( hboxmain, 'Widths', [0, -1] )
@@ -168,11 +182,11 @@ try_get_files();
                 set(data.pelvisplot{i}, 'ButtonDownFcn', @hatrajectory_Callback)
                 set(data.cuisseplot{i}, 'ButtonDownFcn', @hatrajectory_Callback)
             end
-            set(labelhour, 'String', datestr(seconds(data.hour*3600 + round(slidercontrol.Value)/data.humanModel.sampling_rate),'HH:MM:SS PM'))
-        end        
+            set_labelhour()
+        end
         set_layout()
         set(ha, 'DataAspectRatioMode', 'manual')
-
+        
     end
 
     function editpelvis_Callback(source, eventdata)
@@ -202,39 +216,32 @@ try_get_files();
         data.pelvis_path = '';
     end
 
-    function btnload_Callback(source,eventdata)
+    function btnload_Callback(source,eventdata) %#ok<*INUSD>
         if ~isempty(data.pelvis_path) && ~isempty(data.cuisse_path)
             axes(ha)
-            data.humanModel = HumanModel(data.pelvis_path, data.cuisse_path, 60);
+            data.humanModel = HumanModel(data.pelvis_path, ...
+                                         data.cuisse_path,...
+                                         'filetype', popup_filetype.String{popup_filetype.Value});
+            if length(data.humanModel.working_index) == data.humanModel.working_index_max_length
+                rois = region_of_interest_selector(data);
+                uiwait(rois);
+            end
             init_plot(data)
             set(slidercontrol, 'Value', 1,...
-                'min', 1, 'max', length(data.humanModel.timestamp) , ...
-                'SliderStep', [1, 1] / length(data.humanModel.timestamp))
+                'min', 1, 'max', length(data.humanModel.working_index) , ...
+                'SliderStep', [1, 1] / length(data.humanModel.working_index))
             
             axes(hatrajectory)
             init_graph_plot(data)
-            
             
             update_ui_Callback(0,0)
         end
     end
 
-    function btnprevhour_Callback(source, eventdata)
-        data.hour = min(data.hour-1, 1);
-        data.humanModel.load_data('hour', data.hour)
-        update_plot(data, 1)
-        update_graph_plot(data, 1);
-    end
-        
-    function btnnexthour_Callback(source, eventdata)
-        data.hour = data.hour+1;
-        data.humanModel.load_data('hour', data.hour)
-        update_plot(data, 1)
-        update_graph_plot(data, 1);
-    end
-
     function btnrectify_Callback(source, eventdata)
+        set(f, 'Pointer', 'watch')
         data.humanModel.rectify()
+        set(f, 'Pointer', 'arrow')
         update_plot(data, 1)
         update_graph_plot(data, 1);
     end
@@ -250,69 +257,71 @@ try_get_files();
         update_plot(data, value)
         update_graph_plot(data, value);
         if ~isempty(data.videoReader)
-            update_video(value/data.humanModel.sampling_rate + str2num(get(editvideooffset, 'String')))
+            update_video(value/data.humanModel.sampling_rate + str2double(get(editvideooffset, 'String')))
         end
-        set(labelhour, 'String', datestr(seconds(data.hour*3600 + round(slidercontrol.Value)/data.humanModel.sampling_rate),'HH:MM:SS PM'))
-
-        
+        set_labelhour()  
     end
-    
+
     function btndebug_Callback(source, event)
         keyboard
     end
 
-    function hatrajectory_Callback(source, event)
+    function hatrajectory_Callback(source, event) %#ok<*INUSL>
         if strcmp(selection_mode, 'normal')
             index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
             slidercontrol.Value = index;
             slidercontrol_Callback(slidercontrol, 0)
             
         elseif strcmp(selection_mode, 'selectcalibrationzone1')
-            selected_calibration_start_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+            timestamp = data.humanModel.timestamp();
+            selected_calibration_start_index = find( timestamp > event.IntersectionPoint(1), 1, 'first');
             slidercontrol.Value = selected_calibration_start_index;
             slidercontrol_Callback(slidercontrol, 0)
             selection_mode = 'selectcalibrationzone2';
             
             axes(hatrajectory)
-            selected_calibration_time1 = data.humanModel.timestamp(selected_calibration_start_index);
+            selected_calibration_time1 = timestamp(selected_calibration_start_index);
             h = plot([selected_calibration_time1, selected_calibration_time1], get(hatrajectory, 'Ylim'), 'r');
             selected_plots{end+1} = h;
             
         elseif strcmp(selection_mode, 'selectcalibrationzone2')
-            selected_calibration_stop_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+            timestamp = data.humanModel.timestamp();
+            selected_calibration_stop_index = find(timestamp > event.IntersectionPoint(1), 1, 'first');
             slidercontrol.Value = selected_calibration_stop_index;
             slidercontrol_Callback(slidercontrol, 0)
             set(f, 'Pointer', 'ibeam')
             selection_mode = 'first_selection';
             
             axes(hatrajectory)
-            selected_calibration_time2 = data.humanModel.timestamp(selected_calibration_start_index);
+            selected_calibration_time2 = timestamp(selected_calibration_start_index);
             h = plot([selected_calibration_time2, selected_calibration_time2], get(hatrajectory, 'Ylim'), 'r');
             selected_plots{end+1} = h;
             
         elseif strcmp(selection_mode, 'first_selection')
-            selected_start_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
+            timestamp = data.humanModel.timestamp();
+            selected_start_index = find(timestamp > event.IntersectionPoint(1), 1, 'first');
             selection_mode = 'second_selection';
             
             axes(hatrajectory)
-            selected_start_time = data.humanModel.timestamp(selected_start_index);
+            selected_start_time = timestamp(selected_start_index);
             h = plot([selected_start_time, selected_start_time], get(hatrajectory, 'Ylim'), 'g');
             selected_plots{end+1} = h;
             
         elseif strcmp(selection_mode, 'second_selection')
-            selected_stop_index = find(data.humanModel.timestamp > event.IntersectionPoint(1), 1, 'first');
-
+            timestamp = data.humanModel.timestamp();
+            selected_stop_index = find(timestamp > event.IntersectionPoint(1), 1, 'first');
+            
             set(f, 'Pointer', 'arrow')
             selection_mode = 'normal';
             
-            selected_stop_time = data.humanModel.timestamp(selected_stop_index);
+            selected_stop_time = timestamp(selected_stop_index);
             
             % plot the selection
             axes(hatrajectory)
             h = plot([selected_stop_time, selected_stop_time], get(hatrajectory, 'Ylim'), 'g');
             selected_plots{end+1} = h;
             
-            selected_start_time = data.humanModel.timestamp(selected_start_index);
+            selected_start_time = timestamp(selected_start_index);
             
             ylim = get(hatrajectory, 'Ylim');
             h = fill([selected_start_time selected_start_time selected_stop_time selected_stop_time],[ ylim(1) ylim(2) ylim(2) ylim(1)], 'g');
@@ -350,9 +359,13 @@ try_get_files();
             return
         end
         data.videoReader = VideoReader([PathName, FileName]);
+        image(readFrame(data.videoReader), 'Parent', havideo);
+        axes(havideo)
+        axis equal
+        set(havideo, 'Visible', 'Off')
         
         update_ui_Callback(0, 0)
-        update_video(max(0 + str2num(get(editvideooffset, 'String')), 0))
+        update_video(max(0 + str2double(get(editvideooffset, 'String')), 0))
         
     end
 
@@ -360,46 +373,83 @@ try_get_files();
         slidercontrol_Callback(slidercontrol, 0)
     end
 
+    function btnplay_Callback(source, event)
+        if ~data.playing
+            data.playing = true;
+            framerate = 3; % Base framerate. It will be adapted to play at ~1x speed
+            while data.playing
+                slidercontrol.Value = slidercontrol.Value+framerate;
+                if slidercontrol.Value > slidercontrol.Max;
+                    slidercontrol.Value = slidercontrol.Max;
+                    data.playing = false;
+                    break
+                end
+                tic
+                slidercontrol_Callback(slidercontrol, 0)
+                time_elapsed = toc;
+                if time_elapsed/framerate > 1/data.humanModel.sampling_rate % Adaptive framerate
+                    framerate = framerate + 1;
+                else
+                    framerate = framerate - 1;
+                end
+                framerate = max(1, framerate);
+            end
+        else
+            data.playing = false;
+        end
+    end
+
+    function KeyPressFcn_Callback(source, event)
+        if strcmp(event.Key, 'space')
+            btnplay_Callback(source, event)
+        end
+    end
+
     function update_video(time)
         time = max(time,0);
         time = min(time, data.videoReader.Duration-0.1);
         set(data.videoReader, 'CurrentTime', time)
-        vidFrame = readFrame(data.videoReader);
-        image(vidFrame, 'Parent', havideo);
-        axes(havideo)
-        axis equal
-        set(havideo, 'Visible', 'Off')
+        havideo.Children.CData = readFrame(data.videoReader);
+        drawnow()
     end
-    
-    %% Misc function 
+
+%% Misc function
+    function set_labelhour()
+        datetime_t = data.humanModel.start_time + seconds(round(slidercontrol.Value + data.humanModel.working_index(1))/data.humanModel.sampling_rate);
+        set(labelhour, 'String', datestr(datetime_t))
+    end
+
     function try_get_files()
         
         % load sentinelle
-%         cuisse_path = dir('data\*Jambe*');
-%         cuisse_path = cuisse_path(2);
-%         if ~isempty(cuisse_path)
-%             cuisse_path = strcat(pwd, '\data\', cuisse_path.name);
-%             data.cuisse_path = cuisse_path;
-%         end
-%         
-%         pelvis_path = dir('data\*Tronc*');
-%         pelvis_path = pelvis_path(2);
-%         if ~isempty(pelvis_path)
-%             pelvis_path = strcat(pwd, '\data\', pelvis_path.name);
-%             data.pelvis_path = pelvis_path;
-%         end
+        %         cuisse_path = dir('data\*Jambe*');
+        %         cuisse_path = cuisse_path(2);
+        %         if ~isempty(cuisse_path)
+        %             cuisse_path = strcat(pwd, '\data\', cuisse_path.name);
+        %             data.cuisse_path = cuisse_path;
+        %         end
+        %
+        %         pelvis_path = dir('data\*Tronc*');
+        %         pelvis_path = pelvis_path(2);
+        %         if ~isempty(pelvis_path)
+        %             pelvis_path = strcat(pwd, '\data\', pelvis_path.name);
+        %             data.pelvis_path = pelvis_path;
+        %         end
         
-%         load test
-%         data.cuisse_path = strcat(pwd, '\jambe-test.csv');
-%         data.pelvis_path = strcat(pwd, '\pelvis-test.csv');
+        %         load test
+        %         data.cuisse_path = strcat(pwd, '\jambe-test.csv');
+        %         data.pelvis_path = strcat(pwd, '\pelvis-test.csv');
         
-%         load test
-%         data.cuisse_path = strcat(pwd, '\data', '\LBP49jambe (2018-03-20)RAW.csv');
-%         data.pelvis_path = strcat(pwd, '\data', '\LBP49tronc (2018-03-20)RAW.csv');
-
-%         load test
-        data.cuisse_path = strcat(pwd, '\data', '\CLE2B23130402 (2018-06-20)RAW jambe.csv');
-        data.pelvis_path = strcat(pwd, '\data', '\CLE2B23130391 (2018-06-20)RAW tronc.csv');
+        %         load test
+        %         data.cuisse_path = strcat(pwd, '\data', '\LBP49jambe (2018-03-20)RAW.csv');
+        %         data.pelvis_path = strcat(pwd, '\data', '\LBP49tronc (2018-03-20)RAW.csv');
+        
+        %         load test
+%                 data.cuisse_path = strcat(pwd, '\data', '\CLE2B23130402 (2018-06-20)RAW jambe.csv');
+%                 data.pelvis_path = strcat(pwd, '\data', '\CLE2B23130391 (2018-06-20)RAW tronc.csv');
+        
+        data.cuisse_path = strcat(pwd, '\data', '\Sujet8Jambe (2016-03-08)RAW.csv');
+        data.pelvis_path = strcat(pwd, '\data', '\Sujet8Tronc (2016-03-08)RAW.csv');
         
         btnload_Callback(0, 0)
     end

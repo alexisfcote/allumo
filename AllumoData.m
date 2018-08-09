@@ -5,7 +5,8 @@ classdef AllumoData < handle
         pelvis_path;
         cuisse_path;
         humanModel;
-        hour=0;
+        view_start_index=1;
+        view_stop_index=3600*30;
     end
     
     properties
@@ -17,6 +18,7 @@ classdef AllumoData < handle
         videoReader
         mainAxes
         videoAxes
+        playing = false
         
         pelvisplot = {}
         cuisseplot = {}
