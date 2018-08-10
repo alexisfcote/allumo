@@ -22,6 +22,7 @@ classdef HumanModel < handle
         
         
         calibration_times = {};
+        misscalibration_mask
         
     end
     
@@ -31,8 +32,12 @@ classdef HumanModel < handle
         rectify_skip = 100 % samples
         rectify_low_pass_cutoff = 1/10 % Hz
         filter_low_pass_cutoff = 2 % Hz
+        detect_misscalibration_cutoff = 1/30 %Hz
         
-        working_index_max_length = 10000;
+        misscalibration_threshold = -0.5; % g
+        
+        working_index_max_length = 3600*12*30;
+        
     end
     
     properties
@@ -113,6 +118,7 @@ classdef HumanModel < handle
                 obj.raw_cuissegaucheAcc = dlmread(cuissefilename, ',', 11+start_at, 1);
                 
                 obj.start_time = get_actigraph_time(pelvisfilename);
+                obj.sampling_rate = get_actigraph_samplerate( pelvisfilename );
                 
                 
             elseif strcmp(filetype, 'ActiGraph-notimestamp')
@@ -122,6 +128,7 @@ classdef HumanModel < handle
                 obj.raw_cuissegaucheAcc = dlmread(cuissefilename, ',', 11+start_at, 0);
                 
                 obj.start_time = get_actigraph_time(pelvisfilename);
+                obj.sampling_rate = get_actigraph_samplerate( pelvisfilename );
             end
             
             min_len = min(length(obj.raw_pelvisAcc), length(obj.raw_cuissegaucheAcc));
@@ -131,7 +138,7 @@ classdef HumanModel < handle
             obj.raw_timestamp   = (1:min_len) / obj.sampling_rate;
             
             if length(obj.raw_timestamp) > obj.working_index_max_length
-                warning('Data to long, opening region selector', obj.working_index_max_length)
+                warning('Data to long, opening region selector')
                 obj.working_index = 1:obj.working_index_max_length;
             else
                 obj.working_index = 1:length(obj.raw_timestamp);
@@ -182,6 +189,29 @@ classdef HumanModel < handle
             end
         end
         
+        function detect_misscalibration(obj)
+            tmp_working_pelvisAcc = rectify_acc(...
+                obj.working_pelvisAcc,...
+                obj.sampling_rate, ...
+                obj.rectify_low_pass_cutoff, ...
+                obj.rectify_window_length, ...
+                obj.rectify_skip );
+            tmp_cuissegaucheAcc = rectify_acc(...
+                obj.working_cuissegaucheAcc, ...
+                obj.sampling_rate, ...
+                obj.rectify_low_pass_cutoff, ...
+                obj.rectify_window_length, ...
+                obj.rectify_skip );
+
+            tmp_working_pelvisAcc = obj.filter_mat(tmp_working_pelvisAcc(:,3),...
+                           obj.sampling_rate, ...
+                           obj.detect_misscalibration_cutoff);
+            tmp_cuissegaucheAcc = obj.filter_mat(tmp_cuissegaucheAcc(:,3),...
+                           obj.sampling_rate, ...
+                           obj.detect_misscalibration_cutoff);
+            obj.misscalibration_mask = (tmp_working_pelvisAcc > -0.5) ...
+                                       & (tmp_working_pelvisAcc > -0.5);
+        end
         
         function rectify(obj)
             obj.load_and_filter_working_from_raw()
@@ -204,8 +234,12 @@ classdef HumanModel < handle
         end
         
         function set_calibrationzone_point(obj,index_calibration_start,index_calibration_stop, index_start, index_stop)
-            lowpelvisAcc = obj.filter_mat(obj.raw_pelvisAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
-            lowcuissegaucheAcc = obj.filter_mat(obj.raw_cuissegaucheAcc, obj.sampling_rate, obj.filter_low_pass_cutoff);
+            lowpelvisAcc       = obj.filter_mat(obj.raw_pelvisAcc(obj.working_index, :),...
+                                                         obj.sampling_rate, ...
+                                                         obj.rectify_low_pass_cutoff);
+            lowcuissegaucheAcc = obj.filter_mat(obj.raw_cuissegaucheAcc(obj.working_index, :),...
+                                                         obj.sampling_rate,...
+                                                         obj.rectify_low_pass_cutoff);
             
             Qpelvis = HumanModel.get_rectifying_Q(...
                 mean(lowpelvisAcc(index_calibration_start:index_calibration_stop, :))', ...

@@ -29,9 +29,9 @@ else
                                 'UniformOutput', false);
 end
 
-                            
-
-
+if ~isempty(humanModel.misscalibration_mask)
+    allumoData.misscalibrationplot.YData = -humanModel.misscalibration_mask(1:steps:end, :)+2;
+end
 
 ylim([-1.2 1.2])
 

@@ -22,6 +22,7 @@ classdef AllumoData < handle
         
         pelvisplot = {}
         cuisseplot = {}
+        misscalibrationplot
         lineplot
     end
     

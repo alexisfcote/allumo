@@ -85,6 +85,11 @@ update_ui_Callback(0, 0)
             errordlg('Choose a region of interest first')
             return
         end
+        if (selected_stop_index - selected_start_index) > data.humanModel.working_index_max_length
+            warndlg('Region of interest too long. Computation time would be too long. Data will be interpolated.', ...
+                    'Data to big', ...
+                    'modal')
+        end
         data.humanModel.set_working_index(selected_start_index:selected_stop_index)
         delete(f);
     end

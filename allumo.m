@@ -9,6 +9,7 @@ f = make_singleton(gui_name);
 if isempty(f) % Allumo already open
     return
 end
+
 f.Visible = 'off';
 f.Position = [360,500,1200,800];
 f.MenuBar = 'None';
@@ -37,12 +38,15 @@ labelhour = uicontrol('Parent', hboxhourbutton, ...
 btnrectify = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Rectify',...
     'Callback',@btnrectify_Callback);
-btnselectcalibrationzone1 = uicontrol('Parent', hboxhourbutton, ...
+btnselectcalibrationzone = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Select Calibrated Zone',...
     'Callback',@btnselectcalibrationzone1_Callback);
-btnclearselectcalibrationzone1 = uicontrol('Parent', hboxhourbutton, ...
-    'Style','pushbutton','String','Clear Calibrated Zone',...
-    'Callback',@btnclearselectcalibrationzone1_Callback);
+btnclearcalibrationzone = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Clear Calibrated Zones',...
+    'Callback',@btnclearcalibrationzone1_Callback);
+btndetectmisscalibration = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Detect MissCalibration',...
+    'Callback',@btndetectmisscalibration_Callback);
 
 btnplay = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Play',...
@@ -95,6 +99,10 @@ uicontrol('Parent', vboxvideo, 'Style', 'text', 'String', 'Video Time Offset (s)
 editvideooffset = uicontrol('Parent', vboxvideo, ...
     'Style','edit','String','0',...
     'Callback',@editvideooffset_Callback);
+
+btnselectregionofinterest = uicontrol('Parent', vboxvideo, ...
+    'Style','pushbutton','String','Select Region of Interest',...
+    'Callback',@btnselectregionofinterest_Callback);
 
 
 % ------ Setting panel End -------
@@ -157,12 +165,12 @@ try_get_files();
 
     function set_layout()
         set( vboxpanesetting, 'Height', [30 30 -1])
-        set( hboxhourbutton, 'Widths', [200 100 130 130 80])
+        set( hboxhourbutton, 'Widths', [200 100 130 130 130 80])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1] );
         set( buttonvbox, 'Height', [30, 30, 30, 30, 30]);
-        set( vboxvideo, 'Height', [30, 20, 30]);
+        set( vboxvideo, 'Height', [30, 20, 30, 30]);
         set( vboxmain, 'Height', [200 -1] );
         if isempty(data.videoReader)
             set( hboxmain, 'Widths', [0, -1] )
@@ -173,6 +181,9 @@ try_get_files();
     end
 
     function update_ui_Callback(~, ~)
+        set(f, 'Pointer', 'watch')
+        drawnow
+        
         set(editpelvis, 'String', data.pelvis_path)
         set(editcuisse, 'String', data.cuisse_path)
         
@@ -186,7 +197,7 @@ try_get_files();
         end
         set_layout()
         set(ha, 'DataAspectRatioMode', 'manual')
-        
+        set(f, 'Pointer', 'arrow')
     end
 
     function editpelvis_Callback(source, eventdata)
@@ -217,8 +228,9 @@ try_get_files();
     end
 
     function btnload_Callback(source,eventdata) %#ok<*INUSD>
+        set(f, 'Pointer', 'watch')
+        drawnow
         if ~isempty(data.pelvis_path) && ~isempty(data.cuisse_path)
-            axes(ha)
             data.humanModel = HumanModel(data.pelvis_path, ...
                                          data.cuisse_path,...
                                          'filetype', popup_filetype.String{popup_filetype.Value});
@@ -226,6 +238,7 @@ try_get_files();
                 rois = region_of_interest_selector(data);
                 uiwait(rois);
             end
+            axes(ha)
             init_plot(data)
             set(slidercontrol, 'Value', 1,...
                 'min', 1, 'max', length(data.humanModel.working_index) , ...
@@ -236,10 +249,12 @@ try_get_files();
             
             update_ui_Callback(0,0)
         end
+        set(f, 'Pointer', 'arrow')
     end
 
     function btnrectify_Callback(source, eventdata)
         set(f, 'Pointer', 'watch')
+        drawnow
         data.humanModel.rectify()
         set(f, 'Pointer', 'arrow')
         update_plot(data, 1)
@@ -345,12 +360,38 @@ try_get_files();
         
     end
 
-    function btnclearselectcalibrationzone1_Callback(source, event)
+    function btnclearcalibrationzone1_Callback(source, event)
+        set(f, 'Pointer', 'watch')
+        drawnow
         for i=1:length(selected_plots)
             delete(selected_plots{i});
             data.humanModel.clear_all_calibration_time();
         end
         slidercontrol_Callback(slidercontrol, 0)
+        set(f, 'Pointer', 'arrow')
+    end
+
+    function btndetectmisscalibration_Callback(source, event)
+        set(f, 'Pointer', 'watch')
+        drawnow
+        data.humanModel.detect_misscalibration()
+        set(f, 'Pointer', 'arrow')
+        slidercontrol_Callback(slidercontrol, 0)
+    end
+
+    function btnselectregionofinterest_Callback(source, event)
+        rois = region_of_interest_selector(data);
+        uiwait(rois);
+        axes(ha)
+        init_plot(data)
+        set(slidercontrol, 'Value', 1,...
+            'min', 1, 'max', length(data.humanModel.working_index) , ...
+            'SliderStep', [1, 1] / length(data.humanModel.working_index))
+        
+        axes(hatrajectory)
+        init_graph_plot(data)
+        
+        update_ui_Callback(0,0)
     end
 
     function btnloadvideo_Callback(source, event)
@@ -445,11 +486,11 @@ try_get_files();
         %         data.pelvis_path = strcat(pwd, '\data', '\LBP49tronc (2018-03-20)RAW.csv');
         
         %         load test
-%                 data.cuisse_path = strcat(pwd, '\data', '\CLE2B23130402 (2018-06-20)RAW jambe.csv');
-%                 data.pelvis_path = strcat(pwd, '\data', '\CLE2B23130391 (2018-06-20)RAW tronc.csv');
+                data.cuisse_path = strcat(pwd, '\data', '\CLE2B23130402 (2018-06-20)RAW jambe.csv');
+                data.pelvis_path = strcat(pwd, '\data', '\CLE2B23130391 (2018-06-20)RAW tronc.csv');
         
-        data.cuisse_path = strcat(pwd, '\data', '\Sujet8Jambe (2016-03-08)RAW.csv');
-        data.pelvis_path = strcat(pwd, '\data', '\Sujet8Tronc (2016-03-08)RAW.csv');
+%         data.cuisse_path = strcat(pwd, '\data', '\Sujet8Jambe (2016-03-08)RAW.csv');
+%         data.pelvis_path = strcat(pwd, '\data', '\Sujet8Tronc (2016-03-08)RAW.csv');
         
         btnload_Callback(0, 0)
     end
