@@ -1,7 +1,6 @@
 function allumo
 % Main allumoGUI
-addpath('layout')
-addpath('ploting')
+addpath('layout', 'ploting', 'actigraph', 'GUI utils', 'math utils')
 %  Create and then hide the GUI as it is being constructed.
 
 gui_name = 'Allumo';
