@@ -1,5 +1,7 @@
 **Allumo** is a visualization and pre-processing tool to prepare IMU data used in human posture monitoring and assessment.
 
+![alt text](https://github.com/alexisfcote/allumo/AllumoPreview.JPG "Allumo Preview")
+
 The Allumo tool aims to expedite the identification and recalibration of accelerometer readings by showing an intuitive graphical interface to the observer. An animated humanoid form illustrates the estimated posture of the participant at selected time points in the data stream. It makes it easy to identify erroneous calibrations, as an abnormal posture of the body will be displayed (e.g. walking at a skewed angle). The tool also automatically identifies data segments requiring human intervention using a decision tree by detecting unnatural or impossible postures. It also tackles the problem of displaying long duration files by slicing time in hours and days to intuitively guide the observer. Furthermore, it includes pre-processing steps such as filtering and automatic calibration based on singular value decomposition to automatically correct for small calibration mistakes and smooth out the data. Pre-processing parameters can be adjusted and their effect viewed instantly as the humanoid form animates to illustrate the changes.
 
 This tool was designed for researchers in the field of motor function, motor rehabilitation and pain prevention as part of the Sentinel North project 2.8, and is open source and available at https://github.com/alexisfcote/allumo.
