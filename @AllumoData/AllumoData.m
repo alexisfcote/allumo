@@ -23,6 +23,10 @@ classdef AllumoData < handle
         pelvisplot = {}
         cuisseplot = {}
         misscalibrationplot
+        walking_plot
+        walking_text
+        running_plot
+        running_text
         lineplot
     end
     

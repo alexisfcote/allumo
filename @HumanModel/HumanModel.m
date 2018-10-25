@@ -24,6 +24,9 @@ classdef HumanModel < handle
         calibration_times = {};
         misscalibration_mask
         
+        walking_mask
+        running_mask
+        
     end
     
     properties
@@ -213,6 +216,11 @@ classdef HumanModel < handle
                                        & (tmp_working_pelvisAcc > -0.5);
         end
         
+        function detect_walking_and_running(obj)
+            obj.walking_mask = SignalDetection.walk_detection(obj.raw_cuissegaucheAcc, obj.sampling_rate, 0.05);
+            obj.running_mask = SignalDetection.walk_detection(obj.raw_cuissegaucheAcc, obj.sampling_rate, 0.25);
+        end
+        
         function rectify(obj)
             obj.load_and_filter_working_from_raw()
             obj.working_pelvisAcc = rectify_acc(...
@@ -233,7 +241,7 @@ classdef HumanModel < handle
             
         end
         
-        function set_calibrationzone_point(obj,index_calibration_start,index_calibration_stop, index_start, index_stop)
+        function set_calibrationzone_point(obj,index_calibration_start, index_calibration_stop, index_start, index_stop)
             lowpelvisAcc       = obj.filter_mat(obj.raw_pelvisAcc(obj.working_index, :),...
                                                          obj.sampling_rate, ...
                                                          obj.rectify_low_pass_cutoff);

@@ -143,6 +143,8 @@ allumoData.l{15} = plot3([GenouGauche_POS(1);PiedGauche_POS(1)],[GenouGauche_POS
 
 allumoData.tete = plot3([Tete_POS(1)+Tete_Rot(1,2)*0.05;Tete_POS(1)+Tete_Rot(1,2)*0.15],[Tete_POS(2)+Tete_Rot(2,2)*0.05;Tete_POS(2)+Tete_Rot(2,2)*0.15],[Tete_POS(3)+Tete_Rot(3,2)*0.05;Tete_POS(3)+Tete_Rot(3,2)*0.15],'b','LineWidth',linewidth);
 
+allumoData.walking_text = text(1, 0.5, 0.4, '','Color','blue','FontSize',14);
+allumoData.running_text = text(1, 0.5, 0.7, '','Color','green','FontSize',14);
 
 % ANIMATION AXES
 [allumoData.a{1}, allumoData.a{2}, allumoData.a{3}] = plotaxes(HancheGauche_POS, HancheGauche_Rot);

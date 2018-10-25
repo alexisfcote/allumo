@@ -33,6 +33,18 @@ if ~isempty(humanModel.misscalibration_mask)
     allumoData.misscalibrationplot.YData = -humanModel.misscalibration_mask(1:steps:end, :)+2;
 end
 
+if ~isempty(humanModel.walking_mask)
+    allumoData.walking_plot.YData = -humanModel.walking_mask(1:steps:end, :)+2;
+end
+
+if ~isempty(humanModel.running_mask)
+    allumoData.running_plot.YData = -humanModel.running_mask(1:steps:end, :)+2;
+end
+
+if ~isempty(humanModel.misscalibration_mask)
+    allumoData.misscalibrationplot.YData = -humanModel.misscalibration_mask(1:steps:end, :)+2;
+end
+
 ylim([-1.2 1.2])
 
 

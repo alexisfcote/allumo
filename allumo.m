@@ -34,9 +34,9 @@ hatrajectory = axes('Parent', vboxpanesetting, 'Units','Pixels');
 hboxhourbutton = uix.HBox( 'Parent', vboxpanesetting, 'Spacing', 5 );
 labelhour = uicontrol('Parent', hboxhourbutton, ...
     'Style','text','String','', 'Fontsize', 12);
-btnrectify = uicontrol('Parent', hboxhourbutton, ...
-    'Style','pushbutton','String','Rectify',...
-    'Callback',@btnrectify_Callback);
+btnautocalibration = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Auto-Calibration',...
+    'Callback',@btnautocalibration_Callback);
 btnselectcalibrationzone = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Select Calibrated Zone',...
     'Callback',@btnselectcalibrationzone1_Callback);
@@ -46,6 +46,10 @@ btnclearcalibrationzone = uicontrol('Parent', hboxhourbutton, ...
 btndetectmisscalibration = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Detect MissCalibration',...
     'Callback',@btndetectmisscalibration_Callback);
+btndetect_walking_and_running = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Detect walk and run',...
+    'Callback',@btndetect_walking_and_running_Callback);
+
 
 btnplay = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Play',...
@@ -164,7 +168,7 @@ try_get_files();
 
     function set_layout()
         set( vboxpanesetting, 'Height', [30 30 -1])
-        set( hboxhourbutton, 'Widths', [200 100 130 130 130 80])
+        set( hboxhourbutton, 'Widths', [200 100 130 130 130 130 80])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1] );
@@ -251,7 +255,7 @@ try_get_files();
         set(f, 'Pointer', 'arrow')
     end
 
-    function btnrectify_Callback(source, eventdata)
+    function btnautocalibration_Callback(source, eventdata)
         set(f, 'Pointer', 'watch')
         drawnow
         data.humanModel.rectify()
@@ -350,6 +354,12 @@ try_get_files();
                 selected_start_index = tmp;
             end
             
+            if selected_calibration_stop_index < selected_calibration_start_index
+                tmp = selected_calibration_stop_index;
+                selected_calibration_stop_index = selected_calibration_start_index;
+                selected_calibration_start_index = tmp;
+            end
+            
             % save to model and process
             data.humanModel.set_calibrationzone_point(selected_calibration_start_index, selected_calibration_stop_index, selected_start_index, selected_stop_index)
             
@@ -374,6 +384,14 @@ try_get_files();
         set(f, 'Pointer', 'watch')
         drawnow
         data.humanModel.detect_misscalibration()
+        set(f, 'Pointer', 'arrow')
+        slidercontrol_Callback(slidercontrol, 0)
+    end
+
+    function btndetect_walking_and_running_Callback(source, event)
+        set(f, 'Pointer', 'watch')
+        drawnow
+        data.humanModel.detect_walking_and_running()
         set(f, 'Pointer', 'arrow')
         slidercontrol_Callback(slidercontrol, 0)
     end

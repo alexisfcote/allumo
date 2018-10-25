@@ -134,6 +134,17 @@ for j=1:length(list_of_axes)
     end
 end
 
+if humanModel.walking_mask(index)
+    allumoData.walking_text.String = 'Walking';
+else
+    allumoData.walking_text.String = '';
+end
+if humanModel.running_mask(index)
+    allumoData.running_text.String = 'Running';
+else
+    allumoData.running_text.String = '';
+end
+
 drawnow();
 
 end
