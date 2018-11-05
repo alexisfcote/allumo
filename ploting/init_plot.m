@@ -145,6 +145,7 @@ allumoData.tete = plot3([Tete_POS(1)+Tete_Rot(1,2)*0.05;Tete_POS(1)+Tete_Rot(1,2
 
 allumoData.walking_text = text(1, 0.5, 0.4, '','Color','blue','FontSize',14);
 allumoData.running_text = text(1, 0.5, 0.7, '','Color','green','FontSize',14);
+allumoData.angle_text = text(1, 0.5, 0.1, '0.0','Color','k','FontSize',14);
 
 % ANIMATION AXES
 [allumoData.a{1}, allumoData.a{2}, allumoData.a{3}] = plotaxes(HancheGauche_POS, HancheGauche_Rot);

@@ -1,6 +1,6 @@
 function allumo
 % Main allumoGUI
-addpath('layout', 'ploting', 'actigraph', 'GUI utils', 'math utils')
+addpath('layout', 'ploting', 'actigraph', 'GUI utils', 'math utils', 'utils')
 %  Create and then hide the GUI as it is being constructed.
 
 gui_name = 'Allumo';
@@ -49,6 +49,9 @@ btndetectmisscalibration = uicontrol('Parent', hboxhourbutton, ...
 btndetect_walking_and_running = uicontrol('Parent', hboxhourbutton, ...
     'Style','pushbutton','String','Detect walk and run',...
     'Callback',@btndetect_walking_and_running_Callback);
+btnexport_report = uicontrol('Parent', hboxhourbutton, ...
+    'Style','pushbutton','String','Export results',...
+    'Callback',@btnexport_report_Callback);
 
 
 btnplay = uicontrol('Parent', hboxhourbutton, ...
@@ -168,7 +171,7 @@ try_get_files();
 
     function set_layout()
         set( vboxpanesetting, 'Height', [30 30 -1])
-        set( hboxhourbutton, 'Widths', [200 100 130 130 130 130 80])
+        set( hboxhourbutton, 'Widths', [200 100 130 130 130 130 130 80])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
         set( hbox, 'Widths', [-3 -1] );
@@ -394,6 +397,59 @@ try_get_files();
         data.humanModel.detect_walking_and_running()
         set(f, 'Pointer', 'arrow')
         slidercontrol_Callback(slidercontrol, 0)
+    end
+
+    function btnexport_report_Callback(source, event)
+        
+        [FileName,PathName,FilterIndex] = uiputfile('*.xlsx',...
+                                 'Save report', ...
+                                 getappdata(0, 'filepath_to_last_report'));
+        if ~FilterIndex
+            return
+        end
+        FilePath = fullfile(PathName, FileName);
+        setappdata(0, 'filepath_to_last_report', FilePath)
+        
+        % main sheet
+        main_sheet = {'Start Time','Sampling Rate (Hz)'; 
+              datestr(data.humanModel.start_time), data.humanModel.sampling_rate;};
+        xlRange = 'A1';
+        xlswrite(FilePath, main_sheet, 1, xlRange)
+        
+        
+        % calibration sheet
+        if ~isempty(data.humanModel.calibration_times) 
+            calibration_sheet = {};
+
+            for idx = 1:length(data.humanModel.calibration_times)
+                props = properties(data.humanModel.calibration_times{idx});
+                for iprop = 1:length(props)
+                  thisprop = props{iprop};
+                  calibration_sheet{1, iprop} = thisprop;
+                  thisprop_value = data.humanModel.calibration_times{idx}.(thisprop);
+                  calibration_sheet{idx+1, iprop} = mat2str(thisprop_value);
+                end
+            end
+            xlswrite(FilePath,calibration_sheet, 'calibration_sheet')
+        end
+        
+        % Walkging and running sheet
+        if any(data.humanModel.walking_mask)
+            walking_percent = data.humanModel.walking_percent;
+            running_percent = data.humanModel.running_percent;
+            walking_time = data.humanModel.walking_time;
+            running_time = data.humanModel.running_time;
+            
+            walking_sheet = {'Walking percent', 'Running percent', ...
+                             'Walking time(s)', 'Running time(s)', ...
+                             'Total time(s)';
+                            walking_percent, running_percent, ...
+                            walking_time, running_time, ...
+                            length(data.humanModel.walking_mask)/data.humanModel.sampling_rate};
+            
+            xlswrite(FilePath, walking_sheet, 1, 'A3')
+        end
+        
     end
 
     function btnselectregionofinterest_Callback(source, event)

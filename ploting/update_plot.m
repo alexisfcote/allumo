@@ -134,16 +134,18 @@ for j=1:length(list_of_axes)
     end
 end
 
-if humanModel.walking_mask(index)
+if ~isempty(humanModel.walking_mask) && humanModel.walking_mask(index)
     allumoData.walking_text.String = 'Walking';
 else
     allumoData.walking_text.String = '';
 end
-if humanModel.running_mask(index)
+if ~isempty(humanModel.running_mask) && humanModel.running_mask(index)
     allumoData.running_text.String = 'Running';
 else
     allumoData.running_text.String = '';
 end
+
+allumoData.angle_text.String = sprintf('Trunk angle %0.1f°', acosd(dot(BodyCenter_Rot * [0;0;1],[0;0;1])));
 
 drawnow();
 

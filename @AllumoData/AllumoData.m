@@ -27,6 +27,8 @@ classdef AllumoData < handle
         walking_text
         running_plot
         running_text
+        angle_text
+        
         lineplot
     end
     

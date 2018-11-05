@@ -27,6 +27,8 @@ classdef HumanModel < handle
         walking_mask
         running_mask
         
+        trunk_angle
+        
     end
     
     properties
@@ -164,6 +166,7 @@ classdef HumanModel < handle
                                                          obj.filter_low_pass_cutoff);
                                                      
             obj.compute_rotation_matrix();
+            obj.compute_trunk_angle()
         end
         
         function compute_rotation_matrix(obj)
@@ -192,15 +195,18 @@ classdef HumanModel < handle
             end
         end
         
+        function compute_trunk_angle(obj)
+            obj.trunk_angle = zeros(1, length(obj.pelvis_mat(1,1,:)));
+            
+            for i=1:length(obj.trunk_angle)
+                BodyCenter_Rot = obj.pelvis_mat(:,:,i);
+                obj.trunk_angle(i) = acosd(dot(BodyCenter_Rot * [0;0;1],[0;0;1]));
+            end
+        end
+        
         function detect_misscalibration(obj)
             tmp_working_pelvisAcc = rectify_acc(...
                 obj.working_pelvisAcc,...
-                obj.sampling_rate, ...
-                obj.rectify_low_pass_cutoff, ...
-                obj.rectify_window_length, ...
-                obj.rectify_skip );
-            tmp_cuissegaucheAcc = rectify_acc(...
-                obj.working_cuissegaucheAcc, ...
                 obj.sampling_rate, ...
                 obj.rectify_low_pass_cutoff, ...
                 obj.rectify_window_length, ...
@@ -209,16 +215,30 @@ classdef HumanModel < handle
             tmp_working_pelvisAcc = obj.filter_mat(tmp_working_pelvisAcc(:,3),...
                            obj.sampling_rate, ...
                            obj.detect_misscalibration_cutoff);
-            tmp_cuissegaucheAcc = obj.filter_mat(tmp_cuissegaucheAcc(:,3),...
-                           obj.sampling_rate, ...
-                           obj.detect_misscalibration_cutoff);
-            obj.misscalibration_mask = (tmp_working_pelvisAcc > -0.5) ...
-                                       & (tmp_working_pelvisAcc > -0.5);
+
+            obj.misscalibration_mask = (tmp_working_pelvisAcc > -0.5);
         end
         
         function detect_walking_and_running(obj)
             obj.walking_mask = SignalDetection.walk_detection(obj.raw_cuissegaucheAcc, obj.sampling_rate, 0.05);
             obj.running_mask = SignalDetection.walk_detection(obj.raw_cuissegaucheAcc, obj.sampling_rate, 0.25);
+            obj.walking_mask = obj.walking_mask - obj.running_mask; % Walk only if not running
+        end
+        
+        function value=walking_percent(obj)
+            value = sum(obj.walking_mask) / length(obj.walking_mask);
+        end
+        
+        function value=running_percent(obj)
+            value = sum(obj.running_mask) / length(obj.walking_mask);
+        end
+        
+        function value=walking_time(obj)
+            value = sum(obj.walking_mask) / obj.sampling_rate;
+        end
+        
+        function value = running_time(obj)
+            value = sum(obj.running_mask) / obj.sampling_rate;
         end
         
         function rectify(obj)
@@ -238,6 +258,7 @@ classdef HumanModel < handle
             
             obj.apply_all_calibration_time()
             obj.compute_rotation_matrix()
+            obj.compute_trunk_angle()
             
         end
         
@@ -263,6 +284,7 @@ classdef HumanModel < handle
             
             obj.apply_calibration_time(calibration_time);
             obj.compute_rotation_matrix()
+            obj.compute_trunk_angle()
         end
         
         function apply_calibration_time(obj, calibration_time)
