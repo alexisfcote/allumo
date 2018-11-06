@@ -145,7 +145,7 @@ else
     allumoData.running_text.String = '';
 end
 
-allumoData.angle_text.String = sprintf('Trunk angle %0.1f°', acosd(dot(BodyCenter_Rot * [0;0;1],[0;0;1])));
+allumoData.angle_text.String = sprintf('Trunk angle %0.1f°', humanModel.trunk_angle(index));
 
 drawnow();
 

@@ -402,38 +402,22 @@ try_get_files();
     function btnexport_report_Callback(source, event)
         
         [FileName,PathName,FilterIndex] = uiputfile('*.xlsx',...
-                                 'Save report', ...
-                                 getappdata(0, 'filepath_to_last_report'));
+            'Save report', ...
+            getappdata(0, 'filepath_to_last_report'));
         if ~FilterIndex
             return
         end
+        set(f, 'Pointer', 'watch')
         FilePath = fullfile(PathName, FileName);
         setappdata(0, 'filepath_to_last_report', FilePath)
         
         % main sheet
-        main_sheet = {'Start Time','Sampling Rate (Hz)'; 
-              datestr(data.humanModel.start_time), data.humanModel.sampling_rate;};
+        main_sheet = {'Start Time','Sampling Rate (Hz)';
+            datestr(data.humanModel.start_time), data.humanModel.sampling_rate;};
         xlRange = 'A1';
         xlswrite(FilePath, main_sheet, 1, xlRange)
         
-        
-        % calibration sheet
-        if ~isempty(data.humanModel.calibration_times) 
-            calibration_sheet = {};
-
-            for idx = 1:length(data.humanModel.calibration_times)
-                props = properties(data.humanModel.calibration_times{idx});
-                for iprop = 1:length(props)
-                  thisprop = props{iprop};
-                  calibration_sheet{1, iprop} = thisprop;
-                  thisprop_value = data.humanModel.calibration_times{idx}.(thisprop);
-                  calibration_sheet{idx+1, iprop} = mat2str(thisprop_value);
-                end
-            end
-            xlswrite(FilePath,calibration_sheet, 'calibration_sheet')
-        end
-        
-        % Walkging and running sheet
+        % Walkging and running
         if any(data.humanModel.walking_mask)
             walking_percent = data.humanModel.walking_percent;
             running_percent = data.humanModel.running_percent;
@@ -441,15 +425,48 @@ try_get_files();
             running_time = data.humanModel.running_time;
             
             walking_sheet = {'Walking percent', 'Running percent', ...
-                             'Walking time(s)', 'Running time(s)', ...
-                             'Total time(s)';
-                            walking_percent, running_percent, ...
-                            walking_time, running_time, ...
-                            length(data.humanModel.walking_mask)/data.humanModel.sampling_rate};
+                'Walking time(s)', 'Running time(s)', ...
+                'Total time(s)';
+                walking_percent, running_percent, ...
+                walking_time, running_time, ...
+                length(data.humanModel.walking_mask)/data.humanModel.sampling_rate};
             
             xlswrite(FilePath, walking_sheet, 1, 'A3')
         end
         
+        % Trunk angle
+        [pxx, fs] = periodogram(data.humanModel.trunk_angle,...
+            [], [], data.humanModel.sampling_rate, 'power');
+        
+        trunk_sheet = {'min angle', 'max angle', 'mean angle', 'std', ...
+            'fs', 'spectralpower density';
+            min(data.humanModel.trunk_angle), ...
+            max(data.humanModel.trunk_angle), ...
+            mean(data.humanModel.trunk_angle), ...
+            std(data.humanModel.trunk_angle), ...
+            fs(1), pxx(1)};
+        
+        xlswrite(FilePath, trunk_sheet, 1, 'A5')
+        
+        
+        
+        % calibration sheet
+        if ~isempty(data.humanModel.calibration_times)
+            calibration_sheet = {};
+            
+            for idx = 1:length(data.humanModel.calibration_times)
+                props = properties(data.humanModel.calibration_times{idx});
+                for iprop = 1:length(props)
+                    thisprop = props{iprop};
+                    calibration_sheet{1, iprop} = thisprop;
+                    thisprop_value = data.humanModel.calibration_times{idx}.(thisprop);
+                    calibration_sheet{idx+1, iprop} = mat2str(thisprop_value);
+                end
+            end
+            xlswrite(FilePath,calibration_sheet, 'calibration_sheet')
+        end
+        
+        set(f, 'Pointer', 'arrow')
     end
 
     function btnselectregionofinterest_Callback(source, event)
