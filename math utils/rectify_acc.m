@@ -22,16 +22,30 @@ filtered_mat = [
     filtfilt(b, a, mat(2,:));
     filtfilt(b, a, mat(3,:))];
 
+
+% rest detection (periods where norm(acc) = 1g)
+magnitude = sqrt(sum(filtered_mat'.^2, 2));
+[b, a] = butter(1, wn, 'high');
+magnitude = abs(filtfilt(b, a, magnitude));
+plot(magnitude)
+magnitude = conv(magnitude, hanning(fs*2/cof)/(fs*2/cof), 'same');
+is_at_rest = magnitude < 0.001;
+
 WINDOW = window*fs;
 gravity_compensated_mat = zeros(size(filtered_mat));
 
 first = true;
 for i=1:len
-    if ~mod(i, skip) || first
+    if first || (is_at_rest(i) && ~mod(i, skip)) % Is at rest and computing for 1 in skip. Or first
         idx_min = max(1, ceil(i-WINDOW/2));
         idx_max = min(len, floor(i+WINDOW/2));
-
-        gvector = mean(filtered_mat(:, idx_min:idx_max), 2);
+        
+        valid_mat = filtered_mat(:, idx_min:idx_max);
+        if ~first
+            valid_mat = valid_mat(:, is_at_rest(idx_min:idx_max));
+        end
+        
+        gvector = mean(valid_mat, 2);
         g = [0, 0, -1]';
         G = get_Q_aligning_2_vector(gvector, g);
         
@@ -45,11 +59,16 @@ rectified_mat = zeros(size(filtered_mat));
 
 first = true;
 for i=1:len
-    if ~mod(i, skip) || first
+    if first || (~is_at_rest(i) && ~mod(i, skip)) % Is not at rest and computing for 1 in skip. Or first
         idx_min = max(1, ceil(i-WINDOW/2));
         idx_max = min(len, floor(i+WINDOW/2));
+        
+        valid_mat = gravity_compensated_mat(1:2, idx_min:idx_max);
+        if ~first
+            valid_mat = valid_mat(:, ~is_at_rest(idx_min:idx_max));
+        end
 
-        [U,~,~] = svd(gravity_compensated_mat(1:2, idx_min:idx_max));
+        [U,~,~] = svd(valid_mat);
     
         first = false;
     end

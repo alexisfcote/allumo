@@ -29,7 +29,7 @@ p.Selection = 1;
 vboxpanesetting = uix.VBox( 'Parent', panecontrol, 'Spacing', 5 );
 slidercontrol = uicontrol('Parent', vboxpanesetting, ...
     'Style','slider', 'min',0, 'max',100, 'Value', 1, 'Sliderstep', [1, 1] / 100, ...
-    'Callback',@slidercontrol_Callback);
+    'Callback',@slidercontrol_Callback, 'Visible', 'off');
 hatrajectory = axes('Parent', vboxpanesetting, 'Units','Pixels');
 hboxhourbutton = uix.HBox( 'Parent', vboxpanesetting, 'Spacing', 5 );
 labelhour = uicontrol('Parent', hboxhourbutton, ...
@@ -170,7 +170,7 @@ try_get_files();
 %  because they are nested at a lower level.
 
     function set_layout()
-        set( vboxpanesetting, 'Height', [30 30 -1])
+        set( vboxpanesetting, 'Height', [0 30 -1])
         set( hboxhourbutton, 'Widths', [200 100 130 130 130 130 130 80])
         set( hboxcuisse, 'Widths', [-4 -1] );
         set( hboxpelvis, 'Widths', [-4 -1] );
@@ -444,7 +444,7 @@ try_get_files();
             max(data.humanModel.trunk_angle), ...
             mean(data.humanModel.trunk_angle), ...
             std(data.humanModel.trunk_angle), ...
-            fs(1), pxx(1)};
+            fs(1), pxx(1)};clear all
         
         xlswrite(FilePath, trunk_sheet, 1, 'A5')
         
