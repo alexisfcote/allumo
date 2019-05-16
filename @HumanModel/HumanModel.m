@@ -239,8 +239,8 @@ classdef HumanModel < handle
         end
         
         function detect_walking_and_running(obj)
-            obj.walking_mask = SignalDetection.walk_detection(obj.raw_cuissegaucheAcc, obj.sampling_rate, 0.05);
-            obj.running_mask = SignalDetection.walk_detection(obj.raw_cuissegaucheAcc, obj.sampling_rate, 0.25);
+            obj.walking_mask = SignalDetection.walk_detection(obj.working_cuissegaucheAcc, obj.sampling_rate, 0.05);
+            obj.running_mask = SignalDetection.walk_detection(obj.working_cuissegaucheAcc, obj.sampling_rate, 0.25);
             obj.walking_mask = obj.walking_mask - obj.running_mask; % Walk only if not running
         end
         
